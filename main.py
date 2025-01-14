@@ -13,8 +13,6 @@ async def main():
     from aiogram.fsm.storage.memory import MemoryStorage
     from aiogram import Bot, Dispatcher
     from tg.handlers import start, chat, changer
-    # bot = Bot(token="8091789023:AAHDvYm08g8kAbauGN5eATubQuNwImg88xg")
-    # bot = Bot(token="7247759023:AAER3nI6wzzD_ijJ9qY3WAWogPm_62vGcd8")
     bot = Bot(token="8171375092:AAFLn8ZO_PLF-VT3SnKCwa0SbkEx6cMXWvs")
     dp = Dispatcher(storage=MemoryStorage())
 
