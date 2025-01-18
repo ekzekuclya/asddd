@@ -65,7 +65,10 @@ async def balance(msg: Message):
 @router.message(Command("r"))
 async def get_req(msg: Message, bot: Bot):
     if await IsShopChatID()(msg):
-        await bot.unpin_all_chat_messages(chat_id=msg.chat.id)
+        try:
+            await bot.unpin_all_chat_messages(chat_id=msg.chat.id)
+        except Exception as e:
+            print(e)
         shop = await sync_to_async(Shop.objects.get)(chat_id=msg.chat.id)
         active_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
         if active_req:
