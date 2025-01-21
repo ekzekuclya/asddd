@@ -43,4 +43,7 @@ class Req(models.Model):
     user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE)
     req = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.req_name
+
 

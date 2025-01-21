@@ -119,6 +119,6 @@ async def withdraw_to_admin(call: CallbackQuery, bot: Bot):
 async def handle_withdrawal_to_shop(callback_query: CallbackQuery):
     invoice_ids = callback_query.data.split(':')[1]
     ids = [int(id_) for id_ in invoice_ids.split(',')]
-    await sync_to_async(Invoice.objects.filter(Q(id__in=ids)).update)(withdrawal_to_shop=True)
+    await sync_to_async(Invoice.objects.filter(Q(id__in=ids)).update)(withdrawal_to_shop=True, withdrawal=True)
     await callback_query.message.answer("Инвойсы обновлены!")
 
