@@ -47,3 +47,5 @@ class Req(models.Model):
         return self.req_name
 
 
+class WithdrawalToShop(models.Model):
+    invoices = models.ManyToManyField(Invoice)

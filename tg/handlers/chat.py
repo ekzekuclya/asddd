@@ -4,7 +4,7 @@ from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardMarkup, Ch
     CallbackQuery
 from django.db.models.functions import Coalesce
 from django.db.models import Case, When, Value, IntegerField, Sum
-from ..models import TelegramUser, Shop, Invoice, Req, ShopReq
+from ..models import TelegramUser, Shop, Invoice, Req, ShopReq, WithdrawalToShop
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from asgiref.sync import sync_to_async
 router = Router()
@@ -70,23 +70,30 @@ async def get_req(msg: Message, bot: Bot):
         except Exception as e:
             print(e)
         shop = await sync_to_async(Shop.objects.get)(chat_id=msg.chat.id)
-        active_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
-        if active_req:
-            active_req = active_req.first()
-            req_msg = await msg.answer(f"Актуальные реквзиты:\n\n{active_req.req.bank}\n{active_req.req.req}")
-            await req_msg.pin()
-        else:
-            req = await sync_to_async(
-                lambda: Req.objects.filter(active=True).exclude(
-                    id__in=ShopReq.objects.filter(shop=shop, active=True).values('req')
-                )
-            )()
-
-            # req = await sync_to_async(Req.objects.filter)(active=True)
+        req = await sync_to_async(
+            lambda: Req.objects.filter(active=True).exclude(
+                id__in=ShopReq.objects.filter(active=True).values('req')))()
+        if req:
             req = req.first()
             await sync_to_async(ShopReq.objects.create)(shop=shop, req=req)
-            req_msg = await msg.answer(f"Актуальные реквзиты:\n\n{req.bank}\n{req.req}")
+            req_msg = await msg.answer(f"Актуальные реквизиты:\n\n{req.bank}\n{req.req}")
             await req_msg.pin()
+        else:
+            reqs = await sync_to_async(Req.objects.filter)(active=True)
+            min_req = None
+            min_invoice_count = float('inf')
+            for req_item in reqs:
+                invoice_count = await sync_to_async(
+                    lambda: Invoice.objects.filter(req=req_item).count())()
+                if invoice_count < min_invoice_count:
+                    min_invoice_count = invoice_count
+                    min_req = req_item
+            if min_req:
+                await sync_to_async(ShopReq.objects.create)(shop=shop, req=min_req)
+                req_msg = await msg.answer(f"Актуальные реквизиты:\n\n{min_req.bank}\n{min_req.req}")
+                await req_msg.pin()
+            else:
+                await msg.answer("Все реквизиты заняты и не доступны для назначения.")
 
 
 @router.message(Command("unpin"))
@@ -135,11 +142,13 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
             text += f"\n{i.req.bank}\n{i.req.req}\n\n"
         text += f"({i.date.strftime('%d.%m.%Y %H:%M')}) {i.amount}₸\n"
     builder = InlineKeyboardBuilder()
-    invoice_ids = ','.join(str(i.id) for i in invoices)
+    withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
+    for i in invoices:
+        await sync_to_async(withdrawal_to_shop.invoices.add)(i)
 
     builder.add(InlineKeyboardButton(
         text="Вывод готов",
-        callback_data=f"withdrawal_to_shop:{invoice_ids}"
+        callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"
     ))
     for i in users:
         await bot.send_message(chat_id=i.user_id, text=text, reply_markup=builder.as_markup())

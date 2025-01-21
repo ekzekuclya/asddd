@@ -7,8 +7,7 @@ from aiogram.types.reaction_type_emoji import ReactionTypeEmoji
 from django.db.models import Q
 from aiogram.fsm.context import FSMContext
 from django.db.models.functions import Coalesce
-
-from ..models import TelegramUser, Shop, Invoice, Req, ShopReq
+from ..models import TelegramUser, Shop, Invoice, Req, ShopReq, WithdrawalToShop
 from django.db.models import Sum
 from aiogram.methods import SetMessageReaction
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
@@ -115,10 +114,31 @@ async def withdraw_to_admin(call: CallbackQuery, bot: Bot):
     await call.message.answer("АДРЕС ДЛЯ ПЕРЕВОДА ВЕР20\n\n`0xe6f7c4d12c348b8d71963e10b947327278d39a61`", parse_mode="Markdown")
 
 
-@router.callback_query(F.data.startswith("withdrawal_to_shop"))
+@router.callback_query(F.data.startswith("withdrawal_to_shop_"))
 async def handle_withdrawal_to_shop(callback_query: CallbackQuery):
-    invoice_ids = callback_query.data.split(':')[1]
-    ids = [int(id_) for id_ in invoice_ids.split(',')]
-    await sync_to_async(Invoice.objects.filter(Q(id__in=ids)).update)(withdrawal_to_shop=True, withdrawal=True)
-    await callback_query.message.answer("Инвойсы обновлены!")
+    data = callback_query.data.split("_")
+    with_id = data[3]
+    withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.get)(id=with_id)
+    invoices = withdrawal_to_shop.invoices.all()
+    for i in invoices:
+        i.withdrawal = True
+        i.withdrawal_to_shop = True
+        i.save()
+    await callback_query.answer("Вывод успешно завершен.")
+
+
+@router.message(Command("balance"))
+async def show_balance(msg: Message):
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
+    if user.is_changer:
+        reqs = await sync_to_async(Req.objects.filter)(user=user)
+        if reqs:
+            text = ""
+            for req in reqs:
+                total_amount = await sync_to_async(
+                    lambda: Invoice.objects.filter(req=req, withdrawal=False).aggregate(total_amount=Sum('amount'))
+                )()
+                text += f"{req.req_name} {total_amount} Т\n"
+            await msg.answer(text)
+
 
