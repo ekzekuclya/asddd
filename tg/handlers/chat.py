@@ -70,13 +70,9 @@ async def get_req(msg: Message, bot: Bot):
         except Exception as e:
             print(e)
         shop = await sync_to_async(Shop.objects.get)(chat_id=msg.chat.id)
-        req = await sync_to_async(
-            lambda: Req.objects.filter(active=True).exclude(
-                id__in=ShopReq.objects.filter(active=True).values('req')))()
-        if req:
-            req = req.first()
-            await sync_to_async(ShopReq.objects.create)(shop=shop, req=req)
-            req_msg = await msg.answer(f"Актуальные реквизиты:\n\n{req.bank}\n{req.req}")
+        shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
+        if shop_req:
+            req_msg = await msg.answer(f"Актуальные реквизиты:\n\n{shop_req.req.bank}\n{shop_req.req.req}")
             await req_msg.pin()
         else:
             reqs = await sync_to_async(Req.objects.filter)(active=True)

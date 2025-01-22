@@ -78,6 +78,8 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
                          f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для SHOP {shop.id}",
                          reply_markup=builder.as_markup())
+    await state.clear()
+
 
 
 @router.callback_query(F.data.startswith("change_"))
