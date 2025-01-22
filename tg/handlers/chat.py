@@ -72,6 +72,7 @@ async def get_req(msg: Message, bot: Bot):
         shop = await sync_to_async(Shop.objects.get)(chat_id=msg.chat.id)
         shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
         if shop_req:
+            shop_req = shop_req.first()
             req_msg = await msg.answer(f"Актуальные реквизиты:\n\n{shop_req.req.bank}\n{shop_req.req.req}")
             await req_msg.pin()
         else:
