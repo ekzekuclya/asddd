@@ -93,6 +93,7 @@ async def change_req(call: CallbackQuery, bot: Bot):
     await bot.unpin_all_chat_messages(chat_id=shop.chat_id)
     new_req_msg = await bot.send_message(chat_id=shop.chat_id, text=f"Актуальные реквзиты:\n\n{req.bank}\n{req.req}")
     await new_req_msg.pin()
+    await call.message.answer(f"SHOP:\nID {new_shop_req.shop.id} - {new_shop_req.shop.name}\n{new_shop_req.req.req_name}\n 🟢 Изменен")
 
 
 
@@ -169,7 +170,7 @@ async def show_shop(call: CallbackQuery):
             builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"tsdafs"))
             builder.add(InlineKeyboardButton(text=f"{'🟢' if i == shop_req.req else '🔴'}", callback_data=f"change_{i.id}_{shop.id}"))
         builder.adjust(2)
-        await call.message.answer("SHOPS", reply_markup=builder.as_markup())
+        await call.message.answer(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
 
 
 
