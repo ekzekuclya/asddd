@@ -145,12 +145,14 @@ async def show_balance(msg: Message):
 
 @router.message(Command("admin"))
 async def admin_panel(msg: Message):
-    shop_req = await sync_to_async(ShopReq.objects.filter)(active=True)
-    builder = InlineKeyboardBuilder()
-    for i in shop_req:
-        builder.add(InlineKeyboardButton(text=f"ID {i.shop.id} - {i.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
-    builder.adjust(1)
-    await msg.answer("shops", reply_markup=builder.as_markup())
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
+    if user.is_admin:
+        shop_req = await sync_to_async(ShopReq.objects.filter)(active=True)
+        builder = InlineKeyboardBuilder()
+        for i in shop_req:
+            builder.add(InlineKeyboardButton(text=f"ID {i.shop.id} - {i.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
+        builder.adjust(1)
+        await msg.answer("shops", reply_markup=builder.as_markup())
 
 
 @router.callback_query(F.data.startswith("show_shop_"))
@@ -158,9 +160,19 @@ async def show_shop(call: CallbackQuery):
     data = call.data.split("_")
     shop = await sync_to_async(Shop.objects.get)(id=data[2])
     shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
-    reqs = await sync_to_async(Req.objects.filter)(active=True)
-    builder = InlineKeyboardBuilder()
-    for i in reqs:
-        ...
+    if shop_req:
+        shop_req = shop_req.first()
+        reqs = await sync_to_async(Req.objects.filter)(active=True)
+        builder = InlineKeyboardBuilder()
+        for i in reqs:
+            builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"tsdafs"))
+            builder.add(InlineKeyboardButton(text=f"{'🟢' if i == shop_req.req else '🔴'}", callback_data=f"change_{i.id}_{shop.id}"))
+        builder.adjust(2)
+        await call.message.answer("SHOPS", reply_markup=builder.as_markup())
+
+
+
+
+
 
 
