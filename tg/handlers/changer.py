@@ -76,10 +76,9 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
             builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"change_{i.id}_{shop.id}"))
         builder.adjust(1)
         await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
-                         f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для SHOP {shop.id}",
+                         f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для:\nId {shop.id}-{shop.name}",
                          reply_markup=builder.as_markup())
     await state.clear()
-
 
 
 @router.callback_query(F.data.startswith("change_"))
@@ -142,5 +141,26 @@ async def show_balance(msg: Message):
                 )()
                 text += f"{req.req_name} {total_amount} Т\n"
             await msg.answer(text)
+
+
+@router.message(Command("admin"))
+async def admin_panel(msg: Message):
+    shop_req = await sync_to_async(ShopReq.objects.filter)(active=True)
+    builder = InlineKeyboardBuilder()
+    for i in shop_req:
+        builder.add(InlineKeyboardButton(text=f"ID {i.shop.id} - {i.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
+    builder.adjust(1)
+    await msg.answer("shops", reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("show_shop_"))
+async def show_shop(call: CallbackQuery):
+    data = call.data.split("_")
+    shop = await sync_to_async(Shop.objects.get)(id=data[2])
+    shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
+    reqs = await sync_to_async(Req.objects.filter)(active=True)
+    builder = InlineKeyboardBuilder()
+    for i in reqs:
+        ...
 
 
