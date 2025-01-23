@@ -95,6 +95,7 @@ async def change_req(call: CallbackQuery, bot: Bot):
     await new_req_msg.pin()
 
 
+
 @router.callback_query(F.data.startswith("changer_withdraw_"))
 async def withdraw_to_admin(call: CallbackQuery, bot: Bot):
     data = call.data.split("_")
@@ -150,7 +151,7 @@ async def admin_panel(msg: Message):
         shop_req = await sync_to_async(ShopReq.objects.filter)(active=True)
         builder = InlineKeyboardBuilder()
         for i in shop_req:
-            builder.add(InlineKeyboardButton(text=f"ID {i.shop.id} - {i.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
+            builder.add(InlineKeyboardButton(text=f"ID {i.shop.id} - {i.shop.name}", callback_data=f"show_shop_{i.shop.id}"))
         builder.adjust(1)
         await msg.answer("shops", reply_markup=builder.as_markup())
 
