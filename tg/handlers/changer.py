@@ -90,7 +90,10 @@ async def change_req(call: CallbackQuery, bot: Bot):
     shop_req.active = False
     shop_req.save()
     new_shop_req = await sync_to_async(ShopReq.objects.create)(shop=shop, req=req, active=True)
-    await bot.unpin_all_chat_messages(chat_id=shop.chat_id)
+    try:
+        await bot.unpin_all_chat_messages(chat_id=shop.chat_id)
+    except Exception as e:
+        print(e)
     new_req_msg = await bot.send_message(chat_id=shop.chat_id, text=f"Актуальные реквзиты:\n\n{req.bank}\n{req.req}")
     await new_req_msg.pin()
     await call.message.answer(f"SHOP:\nID {new_shop_req.shop.id} - {new_shop_req.shop.name}\n{new_shop_req.req.req_name}\n 🟢 Изменен")
