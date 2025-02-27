@@ -191,22 +191,35 @@ async def show_shop_stats(msg: Message):
     if user.is_admin:
         text = "Статистика по магазинам за сегодня\n\n"
         today = timezone.now().date()
+
+        # Получаем все магазины
         shops = await sync_to_async(Shop.objects.all)()
+
+        # Общий оборот (все инвойсы)
         total_turnover = await sync_to_async(Invoice.objects.aggregate)(Sum('amount'))
         total_turnover_amount = total_turnover['amount__sum'] if total_turnover else 0
 
-        total_days = (timezone.now().date() - timezone.datetime(2022, 1,
-                                                                1).date()).days  # Можете заменить на вашу начальную дату
+        # Средний оборот по дням за все время
+        total_days = (timezone.now().date() - timezone.datetime(2022, 1, 1).date()).days  # Можете заменить на вашу начальную дату
         avg_turnover_per_day = total_turnover_amount / total_days if total_days > 0 else 0
 
+        # Статистика по магазинам
         for shop in shops:
-            today_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop)
-            today_total_amount = today_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
+            # Получаем инвойсы по типу `kg_req` (к примеру, где `kg_req=True`)
+            kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=True)
+            kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
 
-            text += f"{shop.name} - Оборот за сегодня: {today_total_amount} {'kgs' if shop.kg_req else 'T'}\n"
+            # Получаем инвойсы по типу `kz_req` (к примеру, где `kg_req=False`)
+            kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=False)
+            kz_req_turnover = kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
 
-        text += f"\nОбщий оборот: {total_turnover_amount} {'kgs' if total_turnover_amount and shops[0].kg_req else 'T'}"
-        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if shops[0].kg_req else 'T'}"
+            text += f"{shop.name} - Оборот за сегодня:\n"
+            text += f"  kg_req: {kg_req_turnover} {'kgs' if kg_req_turnover else 'T'}\n"
+            text += f"  kz_req: {kz_req_turnover} {'kgs' if kz_req_turnover else 'T'}\n"
+
+        # Добавление общего оборота и среднего оборота
+        text += f"\nОбщий оборот: {total_turnover_amount} {'kgs' if total_turnover_amount and kg_req_turnover else 'T'}"
+        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if kg_req_turnover else 'T'}"
 
         await msg.answer(text)
 
