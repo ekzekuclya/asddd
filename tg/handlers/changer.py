@@ -192,10 +192,12 @@ async def show_shop_stats(msg: Message):
         text = "Статистика по магазинам за сегодня\n\n"
         today = timezone.now().date()
         shops = await sync_to_async(Shop.objects.all)()
-        total_turnover = await sync_to_async(Invoice.objects.aggregate)(Sum('amount'))['amount__sum']
+        total_turnover = await sync_to_async(Invoice.objects.aggregate)(Sum('amount'))
+        total_turnover_amount = total_turnover['amount__sum'] if total_turnover else 0
 
-        total_days = (timezone.now().date() - timezone.datetime(2022, 1, 1).date()).days  # Можете заменить на вашу начальную дату
-        avg_turnover_per_day = total_turnover / total_days if total_days > 0 else 0
+        total_days = (timezone.now().date() - timezone.datetime(2022, 1,
+                                                                1).date()).days  # Можете заменить на вашу начальную дату
+        avg_turnover_per_day = total_turnover_amount / total_days if total_days > 0 else 0
 
         for shop in shops:
             today_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop)
@@ -203,8 +205,8 @@ async def show_shop_stats(msg: Message):
 
             text += f"{shop.name} - Оборот за сегодня: {today_total_amount} {'kgs' if shop.kg_shop else 'T'}\n"
 
-        text += f"\nОбщий оборот: {total_turnover or 0} {'kgs' if total_turnover and shop.kg_shop else 'T'}"
-        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if shop.kg_shop else 'T'}"
+        text += f"\nОбщий оборот: {total_turnover_amount} {'kgs' if total_turnover_amount and shops[0].kg_shop else 'T'}"
+        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if shops[0].kg_shop else 'T'}"
 
         await msg.answer(text)
 
