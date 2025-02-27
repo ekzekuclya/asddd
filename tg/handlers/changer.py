@@ -158,11 +158,12 @@ async def show_balance(msg: Message):
         builder = InlineKeyboardBuilder()
         for shop_req in shops_req:
             kgs, kzt = await totaler(shop_req.shop)
-            text += (f"🏪 *Магазин*: `{shop_req.shop.name}`\n"
-                     f"💰 *Баланс*: `{kgs}` *KGS*, `{kzt}` *T*\n")
-            text += f"💶 *Реквизиты*: `{shop_req.req.req_name}`\n\n"
-            builder.add(
-                InlineKeyboardButton(text=f"ID {shop_req.shop.id} - {shop_req.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
+            if kgs > 0 or kzt > 0:
+                text += (f"🏪 *Магазин*: `{shop_req.shop.name}`\n"
+                         f"💰 *Баланс*: `{kgs}` *KGS*, `{kzt}` *T*\n")
+                text += f"💶 *Реквизиты*: `{shop_req.req.req_name}`\n\n"
+                builder.add(
+                    InlineKeyboardButton(text=f"ID {shop_req.shop.id} - {shop_req.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
         builder.adjust(2)
         await msg.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
