@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandObject, BaseFilter
 from aiogram.fsm.state import StatesGroup, State
@@ -222,8 +224,8 @@ async def show_shop_stats(msg: Message):
             text += f"  Общий оборот (kz_req): {all_kz_req_turnover} {'kgs' if all_kz_req_turnover else 'T'}\n"
             text += f"  Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
             text += f"  Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
-
-        await msg.answer(text)
+            await msg.answer(text)
+            await asyncio.sleep(1)
 
 
 @router.message(Command("admin"))
