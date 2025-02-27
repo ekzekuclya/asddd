@@ -20,7 +20,7 @@ async def totaler(shop):
 
     total_amount_kzt = await sync_to_async(
         lambda: Invoice.objects.filter(
-            shop=shop, accepted=True, withdrawal_to_shop=False, req__kzt_req=True
+            shop=shop, accepted=True, withdrawal_to_shop=False, req__kz_req=True
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
