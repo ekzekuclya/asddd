@@ -191,28 +191,20 @@ async def show_stats(msg: Message):
 async def show_shop_stats(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
     if user.is_admin:
-        text = "Статистика по магазинам за сегодня\n\n"
+
         today = timezone.now().date()
         shops = await sync_to_async(Shop.objects.all)()
-
-        # Статистика по магазинам
         for shop in shops:
-            # Получаем инвойсы по типу kg_req (для сегодняшнего дня)
+            text = f"Статистика по магазину {shop.name}\n\n"
             kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=True)
             kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
-
-            # Получаем инвойсы по типу kz_req (для сегодняшнего дня)
             kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=False)
             kz_req_turnover = kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
-
-            # Общий оборот за все время
             all_kg_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, req__kg_req=True)
             all_kg_req_turnover = all_kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
 
             all_kz_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, req__kg_req=False)
             all_kz_req_turnover = all_kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
-
-            # Средний оборот за день
             total_days = (timezone.now().date() - all_kg_req_invoices.first().date.date()).days if all_kg_req_invoices.exists() else 1
             avg_kg_req_turnover_per_day = all_kg_req_turnover / total_days if total_days > 0 else 0
             avg_kz_req_turnover_per_day = all_kz_req_turnover / total_days if total_days > 0 else 0
