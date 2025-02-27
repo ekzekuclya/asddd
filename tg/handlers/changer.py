@@ -164,7 +164,7 @@ async def show_balance(msg: Message):
             builder.add(
                 InlineKeyboardButton(text=f"ID {shop_req.shop.id} - {shop_req.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
         builder.adjust(2)
-        await msg.answer(text, reply_markup=builder.as_markup())
+        await msg.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
 
 @router.message(Command("stats"))
