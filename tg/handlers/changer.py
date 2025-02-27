@@ -221,8 +221,8 @@ async def show_shop_stats(call: CallbackQuery):
             text += f"Общий оборот (kz_req): {all_kz_req_turnover} {'kgs' if all_kz_req_turnover else 'T'}\n"
             text += f"Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
             text += f"Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
-
-        await call.message.answer(text)
+            await call.message.answer(text)
+            await asyncio.sleep(1)
 
 
 
