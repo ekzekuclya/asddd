@@ -165,15 +165,48 @@ async def show_balance(msg: Message):
 async def show_stats(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
     if user.is_admin:
-        text = "Отчет за сегодня\n\n"
+        text = "Отчет за сегодня:\n\n"
         reqs = await sync_to_async(Req.objects.filter)(active=True)
         today = timezone.now().date()
+        empty_req = []
         for i in reqs:
             today_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, req=i)
             today_total_amount = today_invoices.aggregate(Sum('amount'))['amount__sum']
-            text += f"{i.req_name} - {today_total_amount} {'kgs' if i.kg_req else 'T'}\n"
-        await msg.answer(text)
+            if today_total_amount:
+                text += f"{i.req_name} - {today_total_amount} {'kgs' if i.kg_req else 'T'}\n"
+            else:
+                empty_req.append(i.req_name)
+        if empty_req:
+            text += "\nПустые реквизиты:\n"
+            for i in empty_req:
+                text += f"\n {i}"
+        builder = InlineKeyboardBuilder()
+        builder.add(InlineKeyboardButton(text="Статистика по магазинам", callback_data="mag_stats"))
+        await msg.answer(text, reply_markup=builder.as_markup())
 
+
+@router.callback_query(F.data == "mag_stats")
+async def show_shop_stats(msg: Message):
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
+    if user.is_admin:
+        text = "Статистика по магазинам за сегодня\n\n"
+        today = timezone.now().date()
+        shops = await sync_to_async(Shop.objects.all)()
+        total_turnover = await sync_to_async(Invoice.objects.aggregate)(Sum('amount'))['amount__sum']
+
+        total_days = (timezone.now().date() - timezone.datetime(2022, 1, 1).date()).days  # Можете заменить на вашу начальную дату
+        avg_turnover_per_day = total_turnover / total_days if total_days > 0 else 0
+
+        for shop in shops:
+            today_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop)
+            today_total_amount = today_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
+
+            text += f"{shop.name} - Оборот за сегодня: {today_total_amount} {'kgs' if shop.kg_shop else 'T'}\n"
+
+        text += f"\nОбщий оборот: {total_turnover or 0} {'kgs' if total_turnover and shop.kg_shop else 'T'}"
+        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if shop.kg_shop else 'T'}"
+
+        await msg.answer(text)
 
 
 @router.message(Command("admin"))
