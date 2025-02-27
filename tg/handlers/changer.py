@@ -203,10 +203,10 @@ async def show_shop_stats(msg: Message):
             today_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop)
             today_total_amount = today_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
 
-            text += f"{shop.name} - Оборот за сегодня: {today_total_amount} {'kgs' if shop.kg_shop else 'T'}\n"
+            text += f"{shop.name} - Оборот за сегодня: {today_total_amount} {'kgs' if shop.kg_req else 'T'}\n"
 
-        text += f"\nОбщий оборот: {total_turnover_amount} {'kgs' if total_turnover_amount and shops[0].kg_shop else 'T'}"
-        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if shops[0].kg_shop else 'T'}"
+        text += f"\nОбщий оборот: {total_turnover_amount} {'kgs' if total_turnover_amount and shops[0].kg_req else 'T'}"
+        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if shops[0].kg_req else 'T'}"
 
         await msg.answer(text)
 
