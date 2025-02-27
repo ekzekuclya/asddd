@@ -191,35 +191,37 @@ async def show_shop_stats(msg: Message):
     if user.is_admin:
         text = "Статистика по магазинам за сегодня\n\n"
         today = timezone.now().date()
-
-        # Получаем все магазины
         shops = await sync_to_async(Shop.objects.all)()
-
-        # Общий оборот (все инвойсы)
-        total_turnover = await sync_to_async(Invoice.objects.aggregate)(Sum('amount'))
-        total_turnover_amount = total_turnover['amount__sum'] if total_turnover else 0
-
-        # Средний оборот по дням за все время
-        total_days = (timezone.now().date() - timezone.datetime(2022, 1, 1).date()).days  # Можете заменить на вашу начальную дату
-        avg_turnover_per_day = total_turnover_amount / total_days if total_days > 0 else 0
 
         # Статистика по магазинам
         for shop in shops:
-            # Получаем инвойсы по типу `kg_req` (к примеру, где `kg_req=True`)
+            # Получаем инвойсы по типу kg_req (для сегодняшнего дня)
             kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=True)
             kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
 
-            # Получаем инвойсы по типу `kz_req` (к примеру, где `kg_req=False`)
+            # Получаем инвойсы по типу kz_req (для сегодняшнего дня)
             kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=False)
             kz_req_turnover = kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
+
+            # Общий оборот за все время
+            all_kg_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, req__kg_req=True)
+            all_kg_req_turnover = all_kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
+
+            all_kz_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, req__kg_req=False)
+            all_kz_req_turnover = all_kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
+
+            # Средний оборот за день
+            total_days = (timezone.now().date() - all_kg_req_invoices.first().date.date()).days if all_kg_req_invoices.exists() else 1
+            avg_kg_req_turnover_per_day = all_kg_req_turnover / total_days if total_days > 0 else 0
+            avg_kz_req_turnover_per_day = all_kz_req_turnover / total_days if total_days > 0 else 0
 
             text += f"{shop.name} - Оборот за сегодня:\n"
             text += f"  kg_req: {kg_req_turnover} {'kgs' if kg_req_turnover else 'T'}\n"
             text += f"  kz_req: {kz_req_turnover} {'kgs' if kz_req_turnover else 'T'}\n"
-
-        # Добавление общего оборота и среднего оборота
-        text += f"\nОбщий оборот: {total_turnover_amount} {'kgs' if total_turnover_amount and kg_req_turnover else 'T'}"
-        text += f"\nСредний оборот в день: {avg_turnover_per_day:.2f} {'kgs' if kg_req_turnover else 'T'}"
+            text += f"  Общий оборот (kg_req): {all_kg_req_turnover} {'kgs' if all_kg_req_turnover else 'T'}\n"
+            text += f"  Общий оборот (kz_req): {all_kz_req_turnover} {'kgs' if all_kz_req_turnover else 'T'}\n"
+            text += f"  Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
+            text += f"  Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
 
         await msg.answer(text)
 
