@@ -9,6 +9,8 @@ from aiogram.types.reaction_type_emoji import ReactionTypeEmoji
 from django.db.models import Q
 from aiogram.fsm.context import FSMContext
 from django.db.models.functions import Coalesce
+
+from .utils import totaler
 from ..models import TelegramUser, Shop, Invoice, Req, ShopReq, WithdrawalToShop
 from django.db.models import Sum
 from aiogram.methods import SetMessageReaction
@@ -150,17 +152,18 @@ async def handle_withdrawal_to_shop(callback_query: CallbackQuery):
 @router.message(Command("balance"))
 async def show_balance(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
-
-    if user.is_changer:
-        reqs = await sync_to_async(Req.objects.filter)(user=user)
-        if reqs:
-            text = ""
-            for req in reqs:
-                total_amount = await sync_to_async(
-                    lambda: Invoice.objects.filter(req=req, withdrawal=False).aggregate(total_amount=Sum('amount'))
-                )()
-                text += f"{req.req_name} {'0' if not total_amount['total_amount'] else total_amount['total_amount']} Т\n"
-            await msg.answer(text)
+    text = "Баланс магазинов\n\n"
+    if user.is_admin:
+        shops_req = await sync_to_async(ShopReq.objects.filter)(active=True)
+        builder = InlineKeyboardBuilder()
+        for shop_req in shops_req:
+            kgs, kzt = await totaler(shop_req.shop)
+            text += f"{shop_req.shop.name} - {kgs} KGS, {kzt}T\n"
+            text += f"--{shop_req.req.req_name}\n\n"
+            builder.add(
+                InlineKeyboardButton(text=f"ID {shop_req.shop.id} - {shop_req.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
+        builder.adjust(1)
+        await msg.answer(text, reply_markup=builder.as_markup())
 
 
 @router.message(Command("stats"))
@@ -216,6 +219,7 @@ async def show_shop_stats(msg: Message):
             text += f"  Общий оборот (kz_req): {all_kz_req_turnover} {'kgs' if all_kz_req_turnover else 'T'}\n"
             text += f"  Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
             text += f"  Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
+            print(text)
             await msg.answer(text)
             await asyncio.sleep(1)
 
