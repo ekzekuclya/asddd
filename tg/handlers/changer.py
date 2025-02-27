@@ -197,32 +197,32 @@ async def show_shop_stats(call: CallbackQuery):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=call.from_user.id)
     if user.is_admin:
         today = timezone.now().date()
-        shops = await sync_to_async(Shop.objects.all)()
+        shops = await sync_to_async(ShopReq.objects.filter)(active=True)
         text = f""
-        for shop in shops:
-            text += f"Статистика по магазину {shop.name}\n\n"
-            kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=True)
+        for shopR in shops:
+            text += f"Статистика по магазину {shopR.shop.name}\n\n"
+            kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shopR.shop, req__kg_req=True)
             kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
-            kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=False)
+            kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shopR.shop, req__kg_req=False)
             kz_req_turnover = kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
-            all_kg_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, req__kg_req=True)
+            all_kg_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shopR.shop, req__kg_req=True)
             all_kg_req_turnover = all_kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
-            all_kz_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, req__kg_req=False)
+            all_kz_req_invoices = await sync_to_async(Invoice.objects.filter)(shop=shopR.shop, req__kg_req=False)
             all_kz_req_turnover = all_kz_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
             total_days = (timezone.now().date() - all_kg_req_invoices.first().date.date()).days if all_kg_req_invoices.exists() else 1
 
             avg_kg_req_turnover_per_day = all_kg_req_turnover / total_days if total_days > 0 else 0
             avg_kz_req_turnover_per_day = all_kz_req_turnover / total_days if total_days > 0 else 0
 
-            text += f"{shop.name} - Оборот за сегодня:\n"
+            text += f"{shopR.shop.name} - Оборот за сегодня:\n"
             text += f"kg_req: {kg_req_turnover} {'kgs' if kg_req_turnover else 'T'}\n"
             text += f"kz_req: {kz_req_turnover} {'kgs' if kz_req_turnover else 'T'}\n"
             text += f"Общий оборот (kg_req): {all_kg_req_turnover} {'kgs' if all_kg_req_turnover else 'T'}\n"
             text += f"Общий оборот (kz_req): {all_kz_req_turnover} {'kgs' if all_kz_req_turnover else 'T'}\n"
             text += f"Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
             text += f"Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
-            await call.message.answer(text)
-            await asyncio.sleep(1)
+        await call.message.answer(text)
+            # await asyncio.sleep(1)
 
 
 
