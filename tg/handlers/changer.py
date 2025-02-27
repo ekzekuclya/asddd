@@ -198,8 +198,9 @@ async def show_shop_stats(call: CallbackQuery):
     if user.is_admin:
         today = timezone.now().date()
         shops = await sync_to_async(Shop.objects.all)()
+        text = f""
         for shop in shops:
-            text = f"Статистика по магазину {shop.name}\n\n"
+            text += f"Статистика по магазину {shop.name}\n\n"
             kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=True)
             kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
             kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shop, req__kg_req=False)
@@ -220,12 +221,9 @@ async def show_shop_stats(call: CallbackQuery):
             text += f"Общий оборот (kz_req): {all_kz_req_turnover} {'kgs' if all_kz_req_turnover else 'T'}\n"
             text += f"Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
             text += f"Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
-            print(text)
-            while len(text) > 4096:
-                await call.message.answer(text[:4096])
-                text = text[4096:]
-            await call.message.answer(text)
-            await asyncio.sleep(1)
+
+        await call.message.answer(text)
+
 
 
 @router.message(Command("admin"))
