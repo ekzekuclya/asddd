@@ -198,9 +198,9 @@ async def show_shop_stats(call: CallbackQuery):
     if user.is_admin:
         today = timezone.now().date()
         shops = await sync_to_async(ShopReq.objects.filter)(active=True)
-        text = f""
+        text = f"STATISTICS\n"
         for shopR in shops:
-            text += f"Статистика по магазину {shopR.shop.name}\n\n"
+            text += f"\nСтатистика по магазину {shopR.shop.name}\n"
             kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shopR.shop, req__kg_req=True)
             kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
             kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shopR.shop, req__kg_req=False)
