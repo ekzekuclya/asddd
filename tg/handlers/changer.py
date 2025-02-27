@@ -158,11 +158,12 @@ async def show_balance(msg: Message):
         builder = InlineKeyboardBuilder()
         for shop_req in shops_req:
             kgs, kzt = await totaler(shop_req.shop)
-            text += f"{shop_req.shop.name} - {kgs} KGS, {kzt}T\n"
-            text += f"--{shop_req.req.req_name}\n\n"
+            text += (f"🏪 *Магазин*: `{shop_req.shop.name}`\n"
+                     f"💰 *Баланс*: `{kgs}` *KGS*, `{kzt}` *T*\n")
+            text += f"💶 *Реквизиты*: `{shop_req.req.req_name}`\n\n"
             builder.add(
                 InlineKeyboardButton(text=f"ID {shop_req.shop.id} - {shop_req.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
-        builder.adjust(1)
+        builder.adjust(2)
         await msg.answer(text, reply_markup=builder.as_markup())
 
 
@@ -220,6 +221,9 @@ async def show_shop_stats(msg: Message):
             text += f"  Средний оборот в день (kg_req): {avg_kg_req_turnover_per_day:.2f} {'kgs' if avg_kg_req_turnover_per_day else 'T'}\n"
             text += f"  Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
             print(text)
+            while len(text) > 4096:
+                await msg.answer(text[:4096])
+                text = text[4096:]
             await msg.answer(text)
             await asyncio.sleep(1)
 
