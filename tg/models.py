@@ -42,6 +42,8 @@ class Req(models.Model):
     req_name = models.CharField(max_length=255)
     user = models.ForeignKey(TelegramUser, on_delete=models.CASCADE)
     req = models.CharField(max_length=255)
+    kg_req = models.BooleanField(default=False)
+    kz_req = models.BooleanField(default=False)
 
     def __str__(self):
         return self.req_name

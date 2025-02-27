@@ -24,4 +24,4 @@ class InvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(Req)
 class ReqAdmin(admin.ModelAdmin):
-    list_display = ['id']
+    list_display = ['id', 'req_name', 'active', 'kg_req', 'kz_req']

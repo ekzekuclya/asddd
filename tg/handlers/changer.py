@@ -12,6 +12,8 @@ from django.db.models import Sum
 from aiogram.methods import SetMessageReaction
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from asgiref.sync import sync_to_async
+from django.utils import timezone
+from datetime import timedelta
 router = Router()
 
 
@@ -25,12 +27,22 @@ async def invoice_changer(call: CallbackQuery):
     data = call.data.split("_")
     user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=call.from_user.id)
     invoice = await sync_to_async(Invoice.objects.get)(id=data[1])
-    reqs = await sync_to_async(Req.objects.filter)(user=user)
+    reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
     builder = InlineKeyboardBuilder()
     for i in reqs:
         builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{i.id}"))
     builder.adjust(1)
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+@router.message(Command("reqs"))
+async def my_reqs(msg: Message):
+    user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=msg.from_user.id)
+    if user.is_changer:
+        reqs = await sync_to_async(Req.objects.filter)(user=user)
+        builder = InlineKeyboardBuilder()
+        for req in reqs:
+            builder.add(InlineKeyboardButton(text=f"{req.req_name}", callback_data=f"user_show_req_{req.id}"))
 
 
 @router.callback_query(F.data.startswith("accept"))
@@ -61,6 +73,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
                                    message_id=msg.message_id)
     await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}", message_id=invoice.status_message_id)
     shop = await sync_to_async(Shop.objects.get)(id=invoice.shop.id)
+    now = timezone.now()
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
             shop=shop, accepted=True, withdrawal=False, req=invoice.req
@@ -99,7 +112,6 @@ async def change_req(call: CallbackQuery, bot: Bot):
     await call.message.answer(f"SHOP:\nID {new_shop_req.shop.id} - {new_shop_req.shop.name}\n{new_shop_req.req.req_name}\n 🟢 Изменен")
 
 
-
 @router.callback_query(F.data.startswith("changer_withdraw_"))
 async def withdraw_to_admin(call: CallbackQuery, bot: Bot):
     data = call.data.split("_")
@@ -136,6 +148,7 @@ async def handle_withdrawal_to_shop(callback_query: CallbackQuery):
 @router.message(Command("balance"))
 async def show_balance(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
+
     if user.is_changer:
         reqs = await sync_to_async(Req.objects.filter)(user=user)
         if reqs:
@@ -144,8 +157,23 @@ async def show_balance(msg: Message):
                 total_amount = await sync_to_async(
                     lambda: Invoice.objects.filter(req=req, withdrawal=False).aggregate(total_amount=Sum('amount'))
                 )()
-                text += f"{req.req_name} {total_amount} Т\n"
+                text += f"{req.req_name} {'0' if not total_amount['total_amount'] else total_amount['total_amount']} Т\n"
             await msg.answer(text)
+
+
+@router.message(Command("stats"))
+async def show_stats(msg: Message):
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
+    if user.is_admin:
+        text = "Отчет за сегодня"
+        reqs = await sync_to_async(Req.objects.filter)(active=True)
+        today = timezone.now().date()
+        for i in reqs:
+            today_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, req=i)
+            today_total_amount = today_invoices.aggregate(Sum('amount'))['amount__sum']
+            text += f"{i.req_name} - {today_total_amount} {'kgs' if i.kg_req else 'T'}"
+        await msg.answer(text)
+
 
 
 @router.message(Command("admin"))

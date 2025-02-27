@@ -19,7 +19,7 @@ async def start_command(msg: Message):
     user.last_name = msg.from_user.last_name
     user.first_name = msg.from_user.first_name
     user.save()
-    await msg.answer("Бот-приемник платежей, для связи пишите @dino_obmenka")
+    await msg.answer("Бот-приемник платежей, для связи пишите @JB_change")
     if user.is_changer:
         builder = InlineKeyboardBuilder()
         req = await sync_to_async(Req.objects.filter)(user=user)

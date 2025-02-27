@@ -41,7 +41,9 @@ def get_total_amount(shop):
 async def shop_register(msg: Message):
     user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=msg.from_user.id)
     if user.is_changer:
-        new_shop, created = await sync_to_async(Shop.objects.get_or_create)(chat_id=msg.chat.id, name=msg.chat.title)
+        new_shop, created = await sync_to_async(Shop.objects.get_or_create)(chat_id=msg.chat.id)
+        new_shop.name = msg.chat.title
+        new_shop.save()
         await msg.answer(f"Ваш идентификационный номер {new_shop.id}\n"
                          f"Бот готов к работе!")
 
@@ -132,12 +134,24 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
     invoices = invoices.order_by('req')
     req_text = ""
     bank_text = ""
+    kg_count = 0
+    kz_count = 0
+    total_kg_sum = 0
+    total_kz_sum = 0
     for i in invoices:
         if i.req.req != req_text or i.req.bank != bank_text:
             req_text = i.req.req
             bank_text = i.req.bank
             text += f"\n{i.req.bank}\n{i.req.req}\n\n"
         text += f"({i.date.strftime('%d.%m.%Y %H:%M')}) {i.amount}₸\n"
+        if i.req.kg_req:
+            kg_count += 1
+            total_kg_sum += i.amount
+        if i.req.kz_req:
+            kz_count += 1
+            total_kz_sum += i.amount
+    text += f"\nОбщая сумма для KG: {total_kg_sum} KGS ({kg_count} инвойсов)"
+    text += f"\nОбщая сумма для KZ: {total_kz_sum} ₸ ({kz_count} инвойсов)"
     builder = InlineKeyboardBuilder()
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
     for i in invoices:
