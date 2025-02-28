@@ -53,3 +53,6 @@ class Req(models.Model):
 
 class WithdrawalToShop(models.Model):
     invoices = models.ManyToManyField(Invoice)
+
+
+
