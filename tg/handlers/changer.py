@@ -35,7 +35,7 @@ async def invoice_changer(call: CallbackQuery):
     builder = InlineKeyboardBuilder()
     for i in reqs:
         builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{i.id}"))
-    builder.adjust(1)
+    builder.adjust(2)
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 
@@ -71,8 +71,13 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     invoice.accepted = True
     invoice.save()
     reaction = ReactionTypeEmoji(emoji="👍")
-    await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
-                                   message_id=invoice.check_message_id)
+    if amount > 0:
+        await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
+                                       message_id=invoice.check_message_id)
+    if amount == 0:
+        reaction = ReactionTypeEmoji(emoji="👎")
+        await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
+                                       message_id=invoice.check_message_id)
     await bot.set_message_reaction(chat_id=msg.chat.id, reaction=[reaction],
                                    message_id=msg.message_id)
     await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}", message_id=invoice.status_message_id)
@@ -85,16 +90,14 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
             total=Coalesce(Sum('amount'), 0)
         )['total']
     )()
-    if total_amount >= 90000:
-        user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
-        builder = InlineKeyboardBuilder()
-        reqs = await sync_to_async(Req.objects.filter)(active=True, user=user)
-        for i in reqs:
-            builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"change_{i.id}_{shop.id}"))
-        builder.adjust(1)
-        await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
-                         f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для:\nId {shop.id}-{shop.name}",
-                         reply_markup=builder.as_markup())
+    if invoice.req.kz_req:
+        if total_amount >= 100000:
+            await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
+                             f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для:\nId {shop.id}-{shop.name}")
+    if invoice.req.kg_req:
+        if total_amount >= 18000:
+            await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} сом. \n"
+                             f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для:\nId {shop.id}-{shop.name}")
     await state.clear()
 
 
@@ -200,7 +203,6 @@ async def show_shop_stats(call: CallbackQuery):
         shops = await sync_to_async(ShopReq.objects.filter)(active=True)
         text = f"STATISTICS\n"
         for shopR in shops:
-            text += f"\nСтатистика по магазину {shopR.shop.name}\n"
             kg_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shopR.shop, req__kg_req=True)
             kg_req_turnover = kg_req_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
             kz_req_invoices = await sync_to_async(Invoice.objects.filter)(date__date=today, shop=shopR.shop, req__kg_req=False)
@@ -214,7 +216,7 @@ async def show_shop_stats(call: CallbackQuery):
             avg_kg_req_turnover_per_day = all_kg_req_turnover / total_days if total_days > 0 else 0
             avg_kz_req_turnover_per_day = all_kz_req_turnover / total_days if total_days > 0 else 0
 
-            text += f"{shopR.shop.name} - Оборот за сегодня:\n"
+            text += f"\n{shopR.shop.name} - Оборот за сегодня:\n"
             text += f"kg_req: {kg_req_turnover} {'kgs' if kg_req_turnover else 'T'}\n"
             text += f"kz_req: {kz_req_turnover} {'kgs' if kz_req_turnover else 'T'}\n"
             text += f"Общий оборот (kg_req): {all_kg_req_turnover} {'kgs' if all_kg_req_turnover else 'T'}\n"
@@ -223,7 +225,6 @@ async def show_shop_stats(call: CallbackQuery):
             text += f"Средний оборот в день (kz_req): {avg_kz_req_turnover_per_day:.2f} {'kgs' if avg_kz_req_turnover_per_day else 'T'}\n"
         await call.message.answer(text)
             # await asyncio.sleep(1)
-
 
 
 @router.message(Command("admin"))

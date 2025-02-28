@@ -15,6 +15,7 @@ class TelegramUser(models.Model):
 
 class Shop(models.Model):
     name = models.CharField(max_length=255, null=True, blank=True)
+    usdt_req = models.CharField(max_length=2555, null=True, blank=True)
     chat_id = models.CharField(max_length=2555)
 
 
@@ -31,6 +32,7 @@ class Invoice(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     withdrawal = models.BooleanField(default=False)
     withdrawal_to_shop = models.BooleanField(default=False)
+    withdrawal_to_changer = models.BooleanField(default=False)
     status_message_id = models.CharField(max_length=2555, null=True, blank=True)
     check_message_id = models.CharField(max_length=2555, null=True, blank=True)
     req = models.ForeignKey("Req", on_delete=models.SET_NULL, null=True, blank=True)
