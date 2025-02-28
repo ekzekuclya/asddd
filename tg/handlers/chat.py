@@ -142,7 +142,7 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
     )()
     users = await sync_to_async(TelegramUser.objects.filter)(is_admin=True)
     await call.message.answer(f"Запрошен вывод {total_amount} ₸")
-    text = f"{shop.id}"
+    text = f"{shop.id} - {shop.name}"
     invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, shop=shop, withdrawal_to_shop=False)
     invoices = invoices.order_by('req')
     req_text = ""
@@ -155,8 +155,8 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
         if i.req.req != req_text or i.req.bank != bank_text:
             req_text = i.req.req
             bank_text = i.req.bank
-            text += f"\n{i.req.bank}\n{i.req.req}\n\n"
-        text += f"({i.date.strftime('%d.%m.%Y %H:%M')}) {i.amount}{'₸' if i.req.kz_req else 'KGS'}\n"
+            text += f"\n🎟 `{i.req.bank}`\n💳 `{i.req.req}`\n\n"
+        text += f"🔹 `({i.date.strftime('%d.%m.%Y %H:%M')})` `{i.amount}` {'*₸*' if i.req.kz_req else '*KGS*'}\n"
         if i.req.kg_req:
             kg_count += 1
             total_kg_sum += i.amount
@@ -164,9 +164,9 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
             kz_count += 1
             total_kz_sum += i.amount
     if total_kg_sum > 0:
-        text += f"\nОбщая сумма KGS: {total_kg_sum} KGS ({kg_count} инвойсов)"
+        text += f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n`({kg_count} инвойсов)`"
     if total_kz_sum > 0:
-        text += f"\nОбщая сумма KZT: {total_kz_sum} ₸ ({kz_count} инвойсов)"
+        text += f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n`({kz_count} инвойсов)`"
     builder = InlineKeyboardBuilder()
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
     for i in invoices:
