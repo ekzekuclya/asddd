@@ -52,16 +52,29 @@ async def shop_register(msg: Message):
 async def balance(msg: Message):
     if await IsShopChatID()(msg):
         shop = await sync_to_async(Shop.objects.get)(chat_id=msg.chat.id)
-        total_amount = await sync_to_async(
+        total_amount_kgs = await sync_to_async(
             lambda: Invoice.objects.filter(
-                shop=shop, accepted=True, withdrawal_to_shop=False
+                shop=shop, accepted=True, withdrawal_to_shop=False, req__kg_req=True
+            ).aggregate(
+                total=Coalesce(Sum('amount'), 0)
+            )['total']
+        )()
+
+        total_amount_kzt = await sync_to_async(
+            lambda: Invoice.objects.filter(
+                shop=shop, accepted=True, withdrawal_to_shop=False, req__kz_req=True
             ).aggregate(
                 total=Coalesce(Sum('amount'), 0)
             )['total']
         )()
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="Запросить вывод", callback_data=f"withdraw_balance_{shop.id}"))
-        await msg.answer(f"Ваш баланс {total_amount}", reply_markup=builder.as_markup())
+        text = "💰 *Ваш баланс*:\n"
+        if total_amount_kzt:
+            text += f"💴 `{total_amount_kzt}` *T*\n"
+        if total_amount_kgs:
+            text += f"💷 `{total_amount_kzt}` *KGS*\n"
+        await msg.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
 
 @router.message(Command("r"))
