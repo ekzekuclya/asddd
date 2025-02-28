@@ -177,5 +177,5 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
         callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"
     ))
     for i in users:
-        await bot.send_message(chat_id=i.user_id, text=text, reply_markup=builder.as_markup())
+        await bot.send_message(chat_id=i.user_id, text=text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
