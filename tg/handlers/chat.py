@@ -73,7 +73,7 @@ async def balance(msg: Message):
         if total_amount_kzt:
             text += f"💴 `{total_amount_kzt}` *T*\n"
         if total_amount_kgs:
-            text += f"💷 `{total_amount_kzt}` *KGS*\n"
+            text += f"💷 `{total_amount_kgs}` *KGS*\n"
         await msg.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
 

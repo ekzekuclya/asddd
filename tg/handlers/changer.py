@@ -91,9 +91,9 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         )['total']
     )()
     if invoice.req.kz_req:
-        if total_amount >= 100000:
+        if total_amount >= 130000:
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
-                             f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для:\nId {shop.id}-{shop.name}")
+                             f"Нужно вывести!")
     if invoice.req.kg_req:
         if total_amount >= 18000:
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} сом. \n"
