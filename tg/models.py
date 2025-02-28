@@ -10,7 +10,7 @@ class TelegramUser(models.Model):
     is_changer = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.username if self.username else "None"
+        return self.username if self.username else f'{self.first_name} {self.last_name}'
 
 
 class Shop(models.Model):
