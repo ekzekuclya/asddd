@@ -171,6 +171,7 @@ async def awaiting_accepting(msg: Message, state: FSMContext):
             usdt_course = total_amount / all_sum
             for invoice in invoices:
                 invoice.usdt_course = usdt_course
+                invoice.withdrawal = True
                 invoice.save()
         await state.clear()
         await msg.answer("Принято!")
