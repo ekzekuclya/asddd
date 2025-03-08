@@ -9,7 +9,7 @@ class TelegramUser(models.Model):
     is_admin = models.BooleanField(default=False)
     is_changer = models.BooleanField(default=False)
     is_super_admin = models.BooleanField(default=False)
-    referred_by = models.ForeignKey("Self", on_delete=models.SET_NULL, null=True, blank=True)
+    referred_by = models.ForeignKey("Self", on_delete=models.SET_NULL, null=True, blank=True, related_name="referred_by")
 
     def __str__(self):
         return self.username if self.username else f'{self.first_name} {self.last_name}'
@@ -52,7 +52,7 @@ class Req(models.Model):
     req = models.CharField(max_length=255)
     kg_req = models.BooleanField(default=False)
     kz_req = models.BooleanField(default=False)
-    ref_by = models.ForeignKey(TelegramUser, on_delete=models.SET_NULL, null=True, blank=True)
+    ref_by = models.ForeignKey(TelegramUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="ref_by")
 
     def __str__(self):
         return self.req_name

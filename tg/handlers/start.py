@@ -29,6 +29,6 @@ async def start_command(msg: Message):
         text = (f"👤 *Пользователь*: {user.first_name}\n"
                 f"💰 *Баланс*: ${round(balance, 2)}")
         await msg.answer(text)
-        
+
 
 
