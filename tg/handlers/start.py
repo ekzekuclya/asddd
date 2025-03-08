@@ -20,7 +20,8 @@ async def start_command(msg: Message):
     user.save()
     if user.is_changer:
         invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
-                                                               withdrawal_to_changer=False, usdt_course__isnull=False)
+                                                               withdrawal_to_changer=False, usdt_course__isnull=False,
+                                                               req__user=user)
 
         total_balance = 0  # Общий баланс пользователя
         referral_bonus = 0  # Реферальный бонус для пригласившего пользователя
