@@ -166,11 +166,12 @@ async def awaiting_accepting(msg: Message, state: FSMContext):
         all_sum = float(msg.text)
         invoices = withdrawals.invoices.all()
         total_amount = sum(invoice.amount for invoice in invoices)
+
         if total_amount > 0:
-            usdt_course = all_sum / total_amount
+            usdt_course = total_amount / all_sum
             for invoice in invoices:
                 invoice.usdt_course = usdt_course
-                await sync_to_async(invoice.save)()
+                invoice.save()
         await state.clear()
         await msg.answer("Принято!")
     except Exception as e:
