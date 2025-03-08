@@ -96,8 +96,8 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
             builder = InlineKeyboardBuilder()
             invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, accepted=True, withdrawal=False, req=invoice.req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
-            withdrawal_invoices = await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
-            builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_invoices.id}"))
+            await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
+            builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}"))
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
                              f"Нужно вывести!", reply_markup=builder.as_markup())
     if invoice.req.kg_req:
@@ -106,9 +106,9 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
             invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, accepted=True, withdrawal=False,
                                                                    req=invoice.req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
-            withdrawal_invoices = await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
+            await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(
-                InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_invoices.id}"))
+                InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}"))
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} сом. \n"
                              f"Нужно вывести!", reply_markup=builder.as_markup())
     await state.clear()
