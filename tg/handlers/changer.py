@@ -4,7 +4,7 @@ from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandObject, BaseFilter
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardMarkup, ChatMemberOwner, ChatMemberAdministrator, \
-    CallbackQuery
+    CallbackQuery, KeyboardButton, ReplyKeyboardRemove
 from aiogram.types.reaction_type_emoji import ReactionTypeEmoji
 from django.db.models import Q
 from aiogram.fsm.context import FSMContext
@@ -90,15 +90,90 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
             total=Coalesce(Sum('amount'), 0)
         )['total']
     )()
+
     if invoice.req.kz_req:
         if total_amount >= 130000:
+            builder = InlineKeyboardBuilder()
+            invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, accepted=True, withdrawal=False, req=invoice.req)
+            withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
+            withdrawal_invoices = await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
+            builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_invoices.id}"))
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
-                             f"Нужно вывести!")
+                             f"Нужно вывести!", reply_markup=builder.as_markup())
     if invoice.req.kg_req:
         if total_amount >= 18000:
+            builder = InlineKeyboardBuilder()
+            invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, accepted=True, withdrawal=False,
+                                                                   req=invoice.req)
+            withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
+            withdrawal_invoices = await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
+            builder.add(
+                InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_invoices.id}"))
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} сом. \n"
-                             f"Нужно вывести!\nВыберите реквизиты, если хотите сменить для:\nId {shop.id}-{shop.name}")
+                             f"Нужно вывести!", reply_markup=builder.as_markup())
     await state.clear()
+
+
+class WithdrawalState(StatesGroup):
+    awaiting_photo = State()
+    awaiting_accepting = State()
+
+
+@router.callback_query(F.data.startswith("order_to_withdrawal_"))
+async def order_to_withdrawal(call: CallbackQuery, state: FSMContext):
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=call.from_user.id)
+    if user.is_changer:
+        keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Финиш")]],
+                                       resize_keyboard=True)
+        await call.message.answer("Отправьте 2 чека!\nПервый чек курс покупки, второй чек отправки:", reply_markup=keyboard)
+        data = call.data.split("_")
+        withdrawal_id = data[3]
+        await state.update_data(wid=withdrawal_id)
+        await state.set_state(WithdrawalState.awaiting_photo)
+
+
+@router.message(WithdrawalState.awaiting_photo)
+async def awaiting_withdrawal_photo(msg: Message, state: FSMContext, bot: Bot):
+    if msg.photo:
+        super_admin = await sync_to_async(TelegramUser.objects.first)(is_super_admin=True)
+        data = await state.get_data()
+        wid = data.get("wid")
+        order_msg = await msg.forward(chat_id=super_admin.user_id)
+        builder = InlineKeyboardBuilder()
+        builder.add(InlineKeyboardButton(text="Принять", callback_data=f"accept_withdrawal_{wid}"))
+        await bot.send_message(chat_id=super_admin.user_id, text="Проверка:", reply_to_message_id=order_msg.message_id, reply_markup=builder.as_markup())
+    if msg.text == "Финиш":
+        await state.clear()
+        await msg.answer("Чек был отправлен, скоро обновится баланс", reply_markup=ReplyKeyboardRemove())
+
+
+@router.callback_query(F.data.startswith("accept_withdrawal_"))
+async def accept_withdrawal(call: CallbackQuery, state: FSMContext):
+    data = call.data.split("_")
+    withdrawal_id = data[2]
+    await state.set_state(WithdrawalState.awaiting_accepting)
+    await state.update_data(wid=withdrawal_id)
+    await call.message.answer("Введите пришедшую сумму в $")
+
+
+@router.message(WithdrawalState.awaiting_accepting)
+async def awaiting_accepting(msg: Message, state: FSMContext):
+    data = await state.get_data()
+    withdrawal_id = data.get("wid")
+    withdrawals = await sync_to_async(WithdrawalToShop.objects.get)(id=withdrawal_id)
+    try:
+        all_sum = float(msg.text)
+        invoices = withdrawals.invoices.all()
+        total_amount = sum(invoice.amount for invoice in invoices)
+        if total_amount > 0:
+            usdt_course = all_sum / total_amount
+            for invoice in invoices:
+                invoice.usdt_course = usdt_course
+                await sync_to_async(invoice.save)()
+        await state.clear()
+        await msg.answer("Принято!")
+    except Exception as e:
+        print(e)
 
 
 @router.callback_query(F.data.startswith("change_"))
@@ -106,17 +181,21 @@ async def change_req(call: CallbackQuery, bot: Bot):
     data = call.data.split("_")
     req = await sync_to_async(Req.objects.get)(id=data[1])
     shop = await sync_to_async(Shop.objects.get)(id=data[2])
-    shop_req = await sync_to_async(ShopReq.objects.get)(shop=shop, active=True)
-    shop_req.active = False
-    shop_req.save()
-    new_shop_req = await sync_to_async(ShopReq.objects.create)(shop=shop, req=req, active=True)
-    try:
-        await bot.unpin_all_chat_messages(chat_id=shop.chat_id)
-    except Exception as e:
-        print(e)
-    new_req_msg = await bot.send_message(chat_id=shop.chat_id, text=f"Актуальные реквзиты:\n\n{req.bank}\n{req.req}")
-    await new_req_msg.pin()
-    await call.message.answer(f"SHOP:\nID {new_shop_req.shop.id} - {new_shop_req.shop.name}\n{new_shop_req.req.req_name}\n 🟢 Изменен")
+    shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
+    if shop_req:
+        for i in shop_req:
+            i.active = False
+            i.save()
+        shop_req.active = False
+        shop_req.save()
+        new_shop_req = await sync_to_async(ShopReq.objects.create)(shop=shop, req=req, active=True)
+        try:
+            await bot.unpin_all_chat_messages(chat_id=shop.chat_id)
+        except Exception as e:
+            print(e)
+        new_req_msg = await bot.send_message(chat_id=shop.chat_id, text=f"Актуальные реквзиты:\n\n{req.bank}\n{req.req}")
+        await new_req_msg.pin()
+        await call.message.answer(f"SHOP:\nID {new_shop_req.shop.id} - {new_shop_req.shop.name}\n{new_shop_req.req.req_name}\n 🟢 Изменен")
 
 
 @router.callback_query(F.data.startswith("changer_withdraw_"))
@@ -253,6 +332,9 @@ async def show_shop(call: CallbackQuery):
             builder.add(InlineKeyboardButton(text=f"{'🟢' if i == shop_req.req else '🔴'}", callback_data=f"change_{i.id}_{shop.id}"))
         builder.adjust(2)
         await call.message.answer(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
+
+
+
 
 
 

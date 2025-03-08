@@ -19,7 +19,7 @@ class ShopReqAdmin(admin.ModelAdmin):
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ['id']
+    list_display = ['id', 'shop']
 
 
 @admin.register(Req)

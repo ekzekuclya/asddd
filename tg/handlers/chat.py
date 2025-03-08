@@ -133,15 +133,22 @@ async def check(msg: Message, bot: Bot):
 @router.callback_query(F.data.startswith("withdraw_balance_"))
 async def withdraw_balance(call: CallbackQuery, bot: Bot):
     shop = await sync_to_async(Shop.objects.get)(chat_id=call.message.chat.id)
-    total_amount = await sync_to_async(
+    total_amount_kgs = await sync_to_async(
         lambda: Invoice.objects.filter(
-            shop=shop, accepted=True, withdrawal_to_shop=False
+            shop=shop, accepted=True, withdrawal_to_shop=False, req__kg_req=True
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
     )()
-    users = await sync_to_async(TelegramUser.objects.filter)(is_admin=True)
-    await call.message.answer(f"Запрошен вывод {total_amount} ₸")
+    total_amount_kzt = await sync_to_async(
+        lambda: Invoice.objects.filter(
+            shop=shop, accepted=True, withdrawal_to_shop=False, req__kz_req=True
+        ).aggregate(
+            total=Coalesce(Sum('amount'), 0)
+        )['total']
+    )()
+    users = await sync_to_async(TelegramUser.objects.filter)(is_super_admin=True)
+    await call.message.answer(f"Запрошен вывод {total_amount_kzt}₸ {total_amount_kgs}KGS")
     text = f"➖➖➖ 🏬 {shop.name} 🏬 ➖➖➖\n"
     invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, shop=shop, withdrawal_to_shop=False)
     invoices = invoices.order_by('req')
@@ -176,6 +183,10 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
         text="Вывод готов",
         callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"
     ))
+    max_message_length = 4096
+    text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
     for i in users:
-        await bot.send_message(chat_id=i.user_id, text=text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        for part in text_parts:
+            await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
+                                   parse_mode="Markdown")
 
