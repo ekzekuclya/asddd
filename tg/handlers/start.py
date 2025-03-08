@@ -22,30 +22,37 @@ async def start_command(msg: Message):
         invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
                                                                withdrawal_to_changer=False, usdt_course__isnull=False)
 
-        total_balance = 0
-        referral_bonus = 0
+        total_balance = 0  # Общий баланс пользователя
+        referral_bonus = 0  # Реферальный бонус для пригласившего пользователя
 
         for invoice in invoices:
+            # Преобразуем сумму инвойса в доллары
             amount_in_usdt = invoice.amount / invoice.usdt_course
 
-            if invoice.req.kg_req:
-                user_share = amount_in_usdt * 0.06
-                referral_share = amount_in_usdt * 0.04
+            # Рассчитываем долю пользователя
+            if invoice.req.kg_req:  # Если тип запроса kg_req
+                if user.referred_by:  # Если пользователь пришел по рефералу
+                    user_share = amount_in_usdt * 0.04  # 4% для пришедшего
+                    referral_share = amount_in_usdt * 0.02  # 2% для того, кто пригласил
+                else:  # Если пользователь не пришел по рефералу
+                    user_share = amount_in_usdt * 0.06  # 6% для обычного пользователя
+                    referral_share = 0  # Реферального бонуса нет
 
-                if user.referred_by:
-                    referral_bonus += referral_share
-                total_balance += user_share + referral_bonus
+            elif invoice.req.kz_req:  # Если тип запроса kz_req
+                if user.referred_by:  # Если пользователь пришел по рефералу
+                    user_share = amount_in_usdt * 0.06  # 6% для пришедшего
+                    referral_share = amount_in_usdt * 0.02  # 2% для того, кто пригласил
+                else:  # Если пользователь не пришел по рефералу
+                    user_share = amount_in_usdt * 0.075  # 7.5% для обычного пользователя
+                    referral_share = 0  # Реферального бонуса нет
 
-            elif invoice.req.kz_req:
-                user_share = amount_in_usdt * 0.075
-                referral_share = amount_in_usdt * 0.06
-
-                if user.referred_by:
-                    referral_bonus += referral_share
-                total_balance += user_share + referral_bonus
+            total_balance += user_share  # Добавляем долю пользователя
+            if user.referred_by:
+                total_balance += referral_share  # Добавляем бонус для пригласившего
 
         total_balance = round(total_balance, 2)  # Округляем до 2 знаков после запятой
 
+        # Формируем сообщение для ответа
         text = (f"👤 *Пользователь*: `{user.first_name}`\n"
                 f"💰 *Баланс*: $`{total_balance}`")
         await msg.answer(text, parse_mode="Markdown")
