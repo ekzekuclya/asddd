@@ -18,45 +18,58 @@ async def start_command(msg: Message):
     user.last_name = msg.from_user.last_name
     user.first_name = msg.from_user.first_name
     user.save()
+    total_balance = 0  # Общий баланс пользователя
     if user.is_changer:
         invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
                                                                withdrawal_to_changer=False, usdt_course__isnull=False,
                                                                req__user=user)
-
-        total_balance = 0  # Общий баланс пользователя
-        referral_bonus = 0  # Реферальный бонус для пригласившего пользователя
-
+        referral_bonus = 0
         for invoice in invoices:
-            # Преобразуем сумму инвойса в доллары
             amount_in_usdt = invoice.amount / invoice.usdt_course
 
-            # Рассчитываем долю пользователя
-            if invoice.req.kg_req:  # Если тип запроса kg_req
-                if user.referred_by:  # Если пользователь пришел по рефералу
-                    user_share = amount_in_usdt * 0.04  # 4% для пришедшего
-                    referral_share = amount_in_usdt * 0.02  # 2% для того, кто пригласил
-                else:  # Если пользователь не пришел по рефералу
-                    user_share = amount_in_usdt * 0.06  # 6% для обычного пользователя
-                    referral_share = 0  # Реферального бонуса нет
+            if invoice.req.kg_req:
+                if user.referred_by:
+                    user_share = amount_in_usdt * 0.04
+                    referral_share = amount_in_usdt * 0.02
+                else:
+                    user_share = amount_in_usdt * 0.06
+                    referral_share = 0
 
-            elif invoice.req.kz_req:  # Если тип запроса kz_req
-                if user.referred_by:  # Если пользователь пришел по рефералу
-                    user_share = amount_in_usdt * 0.06  # 6% для пришедшего
-                    referral_share = amount_in_usdt * 0.02  # 2% для того, кто пригласил
-                else:  # Если пользователь не пришел по рефералу
-                    user_share = amount_in_usdt * 0.075  # 7.5% для обычного пользователя
-                    referral_share = 0  # Реферального бонуса нет
+            elif invoice.req.kz_req:
+                if user.referred_by:
+                    user_share = amount_in_usdt * 0.05
+                    referral_share = amount_in_usdt * 0.025
+                else:
+                    user_share = amount_in_usdt * 0.075
+                    referral_share = 0
 
-            total_balance += user_share  # Добавляем долю пользователя
-            if user.referred_by:
-                total_balance += referral_share  # Добавляем бонус для пригласившего
+            total_balance += user_share
 
-        total_balance = round(total_balance, 2)  # Округляем до 2 знаков после запятой
+        ref_users = await sync_to_async(TelegramUser.objects.filter)(referred_by=user)
+        for ref_user in ref_users:
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
+                                                                   withdrawal_to_changer=False,
+                                                                   usdt_course__isnull=False,
+                                                                   req__user=ref_user)
+            referral_bonus = 0
+            for invoice in invoices:
+                amount_in_usdt = invoice.amount / invoice.usdt_course
 
-        # Формируем сообщение для ответа
-        text = (f"👤 *Пользователь*: `{user.first_name}`\n"
+                if invoice.req.kg_req:
+                    if ref_user.referred_by == user:
+                        user_share = amount_in_usdt * 0.04
+                        referral_share = amount_in_usdt * 0.02
+
+                elif invoice.req.kz_req:
+                    if ref_user.referred_by == user:
+                        referral_share = amount_in_usdt * 0.02
+                total_balance += referral_share
+
+    total_balance = round(total_balance, 2)  # Округляем до 2 знаков после запятой
+
+    text = (f"👤 *Пользователь*: `{user.first_name}`\n"
                 f"💰 *Баланс*: $`{total_balance}`")
-        await msg.answer(text, parse_mode="Markdown")
+    await msg.answer(text, parse_mode="Markdown")
 
 
 
