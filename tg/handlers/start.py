@@ -46,8 +46,8 @@ async def start_command(msg: Message):
 
         total_balance = round(total_balance, 2)  # Округляем до 2 знаков после запятой
 
-        text = (f"👤 *Пользователь*: {user.first_name}\n"
-                f"💰 *Баланс*: ${total_balance}")
+        text = (f"👤 *Пользователь*: `{user.first_name}`\n"
+                f"💰 *Баланс*: $`{total_balance}`")
         await msg.answer(text, parse_mode="Markdown")
 
 
