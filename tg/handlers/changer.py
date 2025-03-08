@@ -135,9 +135,10 @@ async def order_to_withdrawal(call: CallbackQuery, state: FSMContext):
 @router.message(WithdrawalState.awaiting_photo)
 async def awaiting_withdrawal_photo(msg: Message, state: FSMContext, bot: Bot):
     if msg.photo:
-        super_admin = await sync_to_async(TelegramUser.objects.first)(is_super_admin=True)
+        super_admin = await sync_to_async(TelegramUser.objects.filter)(is_super_admin=True)
         data = await state.get_data()
         wid = data.get("wid")
+        super_admin = super_admin.first()
         order_msg = await msg.forward(chat_id=super_admin.user_id)
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="Принять", callback_data=f"accept_withdrawal_{wid}"))
