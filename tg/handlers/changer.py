@@ -351,7 +351,7 @@ async def zp(msg: Message):
         builder = InlineKeyboardBuilder()
 
         builder.add(InlineKeyboardButton(text="Зп выдан", callback_data=callback_text))
-        await msg.answer(text)
+        await msg.answer(text, reply_markup=builder.as_markup())
 
 
 @router.callback_query(F.data.startswith("zp"))
