@@ -357,7 +357,6 @@ async def zp(msg: Message):
 @router.callback_query(F.data.startswith("zp"))
 async def accepting_zp(call: CallbackQuery):
     data = call.data.split("_")[1:]
-
     for withdrawal_id in data:
         try:
             withdrawal = await sync_to_async(WithdrawalToShop.objects.get)(id=withdrawal_id)
