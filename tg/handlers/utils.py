@@ -27,3 +27,52 @@ async def totaler(shop):
     )()
 
     return total_amount_kgs, total_amount_kzt
+
+
+async def balancer(user):
+    invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
+                                                           withdrawal_to_changer=False, usdt_course__isnull=False,
+                                                           req__user=user)
+    total_balance = 0
+    referral_bonus = 0
+    for invoice in invoices:
+        amount_in_usdt = invoice.amount / invoice.usdt_course
+
+        if invoice.req.kg_req:
+            if user.referred_by:
+                user_share = amount_in_usdt * 0.04
+                referral_share = amount_in_usdt * 0.02
+            else:
+                user_share = amount_in_usdt * 0.06
+                referral_share = 0
+
+        elif invoice.req.kz_req:
+            if user.referred_by:
+                user_share = amount_in_usdt * 0.05
+                referral_share = amount_in_usdt * 0.025
+            else:
+                user_share = amount_in_usdt * 0.075
+                referral_share = 0
+
+        total_balance += user_share
+
+    ref_users = await sync_to_async(TelegramUser.objects.filter)(referred_by=user)
+    for ref_user in ref_users:
+        invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
+                                                               withdrawal_to_changer=False,
+                                                               usdt_course__isnull=False,
+                                                               req__user=ref_user)
+        referral_bonus = 0
+        for invoice in invoices:
+            amount_in_usdt = invoice.amount / invoice.usdt_course
+
+            if invoice.req.kg_req:
+                if ref_user.referred_by == user:
+                    user_share = amount_in_usdt * 0.04
+                    referral_share = amount_in_usdt * 0.02
+
+            elif invoice.req.kz_req:
+                if ref_user.referred_by == user:
+                    referral_share = amount_in_usdt * 0.02
+            total_balance += referral_share
+    return total_balance

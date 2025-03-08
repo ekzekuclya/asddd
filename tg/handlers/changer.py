@@ -10,7 +10,7 @@ from django.db.models import Q
 from aiogram.fsm.context import FSMContext
 from django.db.models.functions import Coalesce
 
-from .utils import totaler
+from .utils import totaler, balancer
 from ..models import TelegramUser, Shop, Invoice, Req, ShopReq, WithdrawalToShop
 from django.db.models import Sum
 from aiogram.methods import SetMessageReaction
@@ -337,6 +337,16 @@ async def show_shop(call: CallbackQuery):
         await call.message.answer(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
 
 
+@router.message(Command("zp"))
+async def zp(msg: Message):
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
+    if user.is_super_admin:
+        changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
+        text = "BALANCES\n\n"
+        for user in changers:
+            balance = await balancer(user)
+            text += f"{user.username if user.username else user.first_name} - ${balance}\n"
+        await msg.answer(text)
 
 
 
