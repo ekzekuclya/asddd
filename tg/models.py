@@ -9,7 +9,8 @@ class TelegramUser(models.Model):
     is_admin = models.BooleanField(default=False)
     is_changer = models.BooleanField(default=False)
     is_super_admin = models.BooleanField(default=False)
-    referred_by = models.ForeignKey("TelegramUser", on_delete=models.SET_NULL, null=True, blank=True, related_name="referred_by")
+    referred_by = models.ForeignKey("TelegramUser", on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="referrals")
 
     def __str__(self):
         return self.username if self.username else f'{self.first_name} {self.last_name}'
