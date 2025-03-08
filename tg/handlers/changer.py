@@ -141,14 +141,14 @@ async def awaiting_withdrawal_photo(msg: Message, state: FSMContext, bot: Bot):
         super_admin = super_admin.first()
         order_msg = await msg.forward(chat_id=super_admin.user_id)
         builder = InlineKeyboardBuilder()
-        builder.add(InlineKeyboardButton(text="Принять", callback_data=f"accept_withdrawal_{wid}"))
+        builder.add(InlineKeyboardButton(text="Принять", callback_data=f"withdrawal_accept_{wid}"))
         await bot.send_message(chat_id=super_admin.user_id, text="Проверка:", reply_to_message_id=order_msg.message_id, reply_markup=builder.as_markup())
     if msg.text == "Финиш":
         await state.clear()
         await msg.answer("Чек был отправлен, скоро обновится баланс", reply_markup=ReplyKeyboardRemove())
 
 
-@router.callback_query(F.data.startswith("accept_withdrawal_"))
+@router.callback_query(F.data.startswith("withdrawal_accept_"))
 async def accept_withdrawal(call: CallbackQuery, state: FSMContext):
     data = call.data.split("_")
     withdrawal_id = data[2]
