@@ -30,9 +30,12 @@ async def totaler(shop):
 
 
 async def balancer(user):
+    withdrawal_m2m = await sync_to_async(WithdrawalToShop.objects.create)()
     invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=True,
                                                            withdrawal_to_changer=False, usdt_course__isnull=False,
                                                            req__user=user)
+
+    await sync_to_async(withdrawal_m2m.invoices.add)(*invoices)
     total_balance = 0
     referral_bonus = 0
     for invoice in invoices:
@@ -75,4 +78,5 @@ async def balancer(user):
                 if ref_user.referred_by == user:
                     referral_share = amount_in_usdt * 0.02
             total_balance += referral_share
-    return total_balance
+            await sync_to_async(withdrawal_m2m.invoices.add)(*invoices)
+    return total_balance, withdrawal_m2m.id

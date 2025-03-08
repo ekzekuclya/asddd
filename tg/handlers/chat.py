@@ -162,8 +162,8 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
         if i.req.req != req_text or i.req.bank != bank_text:
             req_text = i.req.req
             bank_text = i.req.bank
-            text += f"\n🎟 `{i.req.bank}`\n💳 `{i.req.req}`\n\n"
-        text += f"🔹 `({i.date.strftime('%d.%m.%Y %H:%M')})` `{i.amount}` {'*₸*' if i.req.kz_req else '*KGS*'}\n"
+            text += f"\n🎟 `{i.req.bank}`\n💳 `{i.req.req}`\n{i.req.user.username if i.req.user.username else i.req.user.first_name}\n"
+        text += f"🔹 `({i.date.strftime('%d.%m.%Y %H:%M')})` `{i.amount}` {'*₸*' if i.req.kz_req else '*KGS*'} {'✅' if i.withdrawal else '🚫'}\n"
         if i.req.kg_req:
             kg_count += 1
             total_kg_sum += i.amount

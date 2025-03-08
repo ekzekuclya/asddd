@@ -343,12 +343,32 @@ async def zp(msg: Message):
     if user.is_super_admin:
         changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
         text = "BALANCES\n\n"
+        callback_text = "zp"
         for user in changers:
-            balance = await balancer(user)
+            balance, wid = await balancer(user)
             text += f"{user.username if user.username else user.first_name} - ${balance}\n"
+            callback_text += f"_{wid}"
+        builder = InlineKeyboardBuilder()
+
+        builder.add(InlineKeyboardButton(text="Зп выдан", callback_data=callback_text))
         await msg.answer(text)
 
 
+@router.callback_query(F.data.startswith("zp"))
+async def accepting_zp(call: CallbackQuery):
+    data = call.data.split("_")[1:]
+
+    for withdrawal_id in data:
+        try:
+            withdrawal = await sync_to_async(WithdrawalToShop.objects.get)(id=withdrawal_id)
+            for invoice in withdrawal.invoices.all():
+                invoice.withdrawal_to_changer = True
+                await sync_to_async(invoice.save)()
+            await call.message.answer(f"Зарплата выдана для инвойсов из запроса {withdrawal_id}.")
+        except WithdrawalToShop.DoesNotExist:
+            await call.message.answer(f"Не найден запрос с ID {withdrawal_id}.")
+        except Exception as e:
+            await call.message.answer(f"Произошла ошибка при обработке запроса {withdrawal_id}: {e}")
 
 
 
