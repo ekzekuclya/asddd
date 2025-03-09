@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import TelegramUser, Shop, ShopReq, Invoice, Req
+from .models import TelegramUser, Shop, ShopReq, Invoice, Req, WithdrawalToShop
 
 
 @admin.register(TelegramUser)
@@ -25,3 +25,8 @@ class InvoiceAdmin(admin.ModelAdmin):
 @admin.register(Req)
 class ReqAdmin(admin.ModelAdmin):
     list_display = ['id', 'req_name', 'active', 'kg_req', 'kz_req']
+
+
+@admin.register(WithdrawalToShop)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ['id']
