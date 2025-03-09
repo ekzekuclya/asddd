@@ -439,7 +439,7 @@ async def ostatki(msg: Message):
             max_message_length = 4096
             text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
             for part in text_parts:
-                await msg.answer(part)
+                await msg.answer(part, parse_mode="Markdown")
         else:
             print("NO INVOICES")
 
