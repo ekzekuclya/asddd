@@ -85,7 +85,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     now = timezone.now()
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
-            accepted=True, withdrawal=False, req=invoice.req
+            accepted=True, withdrawal=False, req=invoice.req, usdt_course__isnull=False
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
@@ -94,7 +94,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     if invoice.req.kz_req:
         if total_amount >= 130000:
             builder = InlineKeyboardBuilder()
-            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req)
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req, usdt_course__isnull=False)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
@@ -104,7 +104,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         if total_amount >= 18000:
             builder = InlineKeyboardBuilder()
             invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False,
-                                                                   req=invoice.req)
+                                                                   req=invoice.req, usdt_course__isnull=False)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(
