@@ -125,7 +125,9 @@ async def order_to_withdrawal(call: CallbackQuery, state: FSMContext):
     if user.is_changer:
         keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Финиш")]],
                                        resize_keyboard=True)
-        await call.message.answer("Отправьте 2 чека!\nПервый чек курс покупки, второй чек отправки:", reply_markup=keyboard)
+        await call.message.answer("TBHb3VWyKZDZkiusaVUWuqHbkDKTyWHCD6\nTRC20")
+        await call.message.answer("`Отправьте 2 чека!\nПервый чек курс покупки, второй чек отправки:", reply_markup=keyboard)
+
         data = call.data.split("_")
         withdrawal_id = data[3]
         await state.update_data(wid=withdrawal_id)
