@@ -398,6 +398,7 @@ async def ostatki(msg: Message):
     if user.is_super_admin:
         invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal_to_shop=False)
         if invoices:
+            print(invoices)
             invoices = invoices.order_by('req')
             text = ""
             req_text = ""
@@ -407,6 +408,7 @@ async def ostatki(msg: Message):
             total_kg_sum = 0
             total_kz_sum = 0
             for i in invoices:
+                print(i)
                 text += f"➖➖➖ 🏬 {i.shop.name} 🏬 ➖➖➖\n"
                 if i.req.req != req_text or i.req.bank != bank_text:
                     req_text = i.req.req
