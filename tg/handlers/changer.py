@@ -81,20 +81,18 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     await bot.set_message_reaction(chat_id=msg.chat.id, reaction=[reaction],
                                    message_id=msg.message_id)
     await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}", message_id=invoice.status_message_id)
-    shop = await sync_to_async(Shop.objects.get)(id=invoice.shop.id)
-    now = timezone.now()
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
-            accepted=True, withdrawal=False, req=invoice.req, usdt_course__isnull=False
+            accepted=True, withdrawal=False, req=invoice.req
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
     )()
-
+    print("TOTAL AMOUNT", total_amount, "REQ", invoice.req.req_name)
     if invoice.req.kz_req:
         if total_amount >= 130000:
             builder = InlineKeyboardBuilder()
-            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req, usdt_course__isnull=False)
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
@@ -104,7 +102,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         if total_amount >= 18000:
             builder = InlineKeyboardBuilder()
             invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False,
-                                                                   req=invoice.req, usdt_course__isnull=False)
+                                                                   req=invoice.req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(
