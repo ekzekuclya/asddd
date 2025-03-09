@@ -387,7 +387,8 @@ async def changer_balance(msg: Message):
                         total=Coalesce(Sum('amount'), 0)
                     )['total']
                 )()
-                text += f"💳 {req.req_name} {total_amount} {'KGS' if req.kg_req else 'KZT'}\n"
+                if total_amount > 0:
+                    text += f"💳 {req.req_name} {total_amount} {'KGS' if req.kg_req else 'KZT'}\n"
             text += "\n"
         await msg.answer(text)
 
@@ -396,7 +397,8 @@ async def changer_balance(msg: Message):
 async def ostatki(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
     if user.is_super_admin:
-        invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal_to_shop=False)
+        invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal_to_shop=False,
+                                                               req__isnull=False)
         if invoices:
             print(invoices)
             invoices = invoices.order_by('req')
