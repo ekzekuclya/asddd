@@ -186,11 +186,8 @@ async def change_req(call: CallbackQuery, bot: Bot):
     data = call.data.split("_")
     req = await sync_to_async(Req.objects.get)(id=data[1])
     shop = await sync_to_async(Shop.objects.get)(id=data[2])
-    shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
+    shop_req = await sync_to_async(ShopReq.objects.get)(shop=shop, active=True)
     if shop_req:
-        for i in shop_req:
-            i.active = False
-            i.save()
         shop_req.active = False
         shop_req.save()
         new_shop_req = await sync_to_async(ShopReq.objects.create)(shop=shop, req=req, active=True)
