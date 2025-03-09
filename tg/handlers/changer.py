@@ -416,7 +416,7 @@ async def ostatki(msg: Message):
                     req_text = i.req.req
                     bank_text = i.req.bank
                     text += f"\n🎟 `{i.req.bank}`\n💳 `{i.req.req}`\n`{i.req.user.username if i.req.user.username else i.req.user.first_name}`\n"
-                text += f"🔹 `({i.date.strftime('%d.%m.%Y %H:%M')})` `{i.amount}` {'*₸*' if i.req.kz_req else '*KGS*'} {'✅' if i.withdrawal else '🚫'}\n"
+                text += f"🔹 `({i.date.strftime('%d.%m.%Y %H:%M')})` `{i.amount}` {'*₸*' if i.req.kz_req else '*KGS*'} {'✅' if i.withdrawal else '🚫'}\n\n"
                 if i.req.kg_req:
                     kg_count += 1
                     total_kg_sum += i.amount
@@ -427,15 +427,6 @@ async def ostatki(msg: Message):
                 text += f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`"
             if total_kz_sum > 0:
                 text += f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`"
-            builder = InlineKeyboardBuilder()
-            withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
-            for i in invoices:
-                await sync_to_async(withdrawal_to_shop.invoices.add)(i)
-
-            builder.add(InlineKeyboardButton(
-                text="Вывод готов",
-                callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"
-            ))
             max_message_length = 4096
             text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
             for part in text_parts:

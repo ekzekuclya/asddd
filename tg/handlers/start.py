@@ -69,7 +69,7 @@ async def start_command(msg: Message):
 
     text = (f"👤 *Пользователь*: `{user.first_name}`\n"
                 f"💰 *Баланс*: $`{total_balance}`")
-    reqs = await sync_to_async(Req.objects.filter)(active=True)
+    reqs = await sync_to_async(Req.objects.filter)(active=True, user=user)
     builder = InlineKeyboardBuilder()
     for req in reqs:
         total_amount = await sync_to_async(
