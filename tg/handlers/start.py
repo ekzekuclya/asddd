@@ -69,7 +69,19 @@ async def start_command(msg: Message):
 
     text = (f"👤 *Пользователь*: `{user.first_name}`\n"
                 f"💰 *Баланс*: $`{total_balance}`")
-    await msg.answer(text, parse_mode="Markdown")
+    reqs = await sync_to_async(Req.objects.filter)(active=True)
+    builder = InlineKeyboardBuilder()
+    for req in reqs:
+        total_amount = await sync_to_async(
+            lambda: Invoice.objects.filter(
+                accepted=True, withdrawal=False, req=req
+            ).aggregate(
+                total=Coalesce(Sum('amount'), 0)
+            )['total']
+        )()
+        builder.add(InlineKeyboardButton(text=f"{req.req_name} ({total_amount})", callback_data=f"hchanger_{req.id}"))
+    builder.adjust(2)
+    await msg.answer(text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
 
 

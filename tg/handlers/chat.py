@@ -127,7 +127,7 @@ async def check(msg: Message, bot: Bot):
         checking = await msg.forward(chat_id=shop_req.req.user.user_id)
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{new_invoice.id}"))
-        await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id, text="На подтверждение", reply_markup=builder.as_markup())
+        await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id, text=f"На подтверждение {new_invoice.id}", reply_markup=builder.as_markup())
 
 
 @router.callback_query(F.data.startswith("withdraw_balance_"))
