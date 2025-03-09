@@ -85,7 +85,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     now = timezone.now()
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
-            shop=shop, accepted=True, withdrawal=False, req=invoice.req
+            accepted=True, withdrawal=False, req=invoice.req
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
@@ -94,21 +94,21 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     if invoice.req.kz_req:
         if total_amount >= 130000:
             builder = InlineKeyboardBuilder()
-            invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, accepted=True, withdrawal=False, req=invoice.req)
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
-            builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}"))
+            builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} тенге. \n"
                              f"Нужно вывести!", reply_markup=builder.as_markup())
     if invoice.req.kg_req:
         if total_amount >= 18000:
             builder = InlineKeyboardBuilder()
-            invoices = await sync_to_async(Invoice.objects.filter)(shop=shop, accepted=True, withdrawal=False,
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False,
                                                                    req=invoice.req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(
-                InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}"))
+                InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
             await msg.answer(f"На вашем банке {invoice.req.req_name} имеется {total_amount} сом. \n"
                              f"Нужно вывести!", reply_markup=builder.as_markup())
     await state.clear()
@@ -130,7 +130,8 @@ async def order_to_withdrawal(call: CallbackQuery, state: FSMContext):
 
         data = call.data.split("_")
         withdrawal_id = data[3]
-        await state.update_data(wid=withdrawal_id)
+        amount = data[4]
+        await state.update_data(wid=withdrawal_id, total=amount)
         await state.set_state(WithdrawalState.awaiting_photo)
 
 
@@ -140,11 +141,13 @@ async def awaiting_withdrawal_photo(msg: Message, state: FSMContext, bot: Bot):
         super_admin = await sync_to_async(TelegramUser.objects.filter)(is_super_admin=True)
         data = await state.get_data()
         wid = data.get("wid")
+        total_amount = data.get("total")
         super_admin = super_admin.first()
         order_msg = await msg.forward(chat_id=super_admin.user_id)
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="Принять", callback_data=f"withdrawal_accept_{wid}"))
-        await bot.send_message(chat_id=super_admin.user_id, text=f"Проверка: {wid}", reply_to_message_id=order_msg.message_id, reply_markup=builder.as_markup())
+        await bot.send_message(chat_id=super_admin.user_id, text=f"Проверка: {wid}\nСумма: {total_amount}",
+                               reply_to_message_id=order_msg.message_id, reply_markup=builder.as_markup())
     if msg.text == "Финиш":
         await state.clear()
         await msg.answer("Чек был отправлен, скоро обновится баланс", reply_markup=ReplyKeyboardRemove())
