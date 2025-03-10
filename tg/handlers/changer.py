@@ -342,7 +342,7 @@ async def show_shop(call: CallbackQuery):
 @router.callback_query(F.data.startswith("changerreq_"))
 async def changer_req(call: CallbackQuery):
     data = call.data.split("_")
-    changer = await sync_to_async(TelegramUser.objects.get)(data[1])
+    changer = await sync_to_async(TelegramUser.objects.get)(user_id=data[1])
     shop_req = await sync_to_async(ShopReq.objects.get)(data[2])
     reqs = await sync_to_async(Req.objects.filter)(active=True, user=changer)
     builder = InlineKeyboardBuilder()
