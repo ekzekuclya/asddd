@@ -333,7 +333,7 @@ async def show_shop(call: CallbackQuery):
         changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
         for changer in changers:
             builder.add(InlineKeyboardButton(text=f"{changer.username if changer.username else changer.first_name}",
-                                             callback_data=f"changerreq_{changer.id}_{shop_req.id}"))
+                                             callback_data=f"changerreq_{changer.user_id}_{shop_req.id}"))
 
         builder.adjust(1)
         await call.message.answer(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
