@@ -4,7 +4,7 @@ from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardMarkup, Ch
 from django.db.models import F, ExpressionWrapper, FloatField, Sum
 from django.db.models.functions import Coalesce
 
-from ..models import TelegramUser, Req, Invoice
+from ..models import TelegramUser, Req, Invoice, WithdrawalToShop
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from asgiref.sync import sync_to_async
@@ -79,7 +79,12 @@ async def start_command(msg: Message):
                 total=Coalesce(Sum('amount'), 0)
             )['total']
         )()
-        builder.add(InlineKeyboardButton(text=f"{req.req_name} ({total_amount})", callback_data=f"hchanger_{req.id}"))
+        if total_amount > 0:
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req)
+            withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
+            await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
+            builder.add(InlineKeyboardButton(text=f"{req.req_name} ({total_amount})",
+                                             callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
     builder.adjust(2)
     await msg.answer(text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
