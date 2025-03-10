@@ -370,7 +370,7 @@ async def shower_shop(call: CallbackQuery):
                                              callback_data=f"changerreq_{changer.user_id}_{shop_req.id}"))
 
         builder.adjust(1)
-        await call.message.answer(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
+        await call.message.edit_text(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
 
 @router.message(Command("zp"))
 async def zp(msg: Message):
