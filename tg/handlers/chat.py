@@ -171,9 +171,13 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
             kz_count += 1
             total_kz_sum += i.amount
     if total_kg_sum > 0:
-        text += f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`"
+        text += (f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`\n"
+                 f"`{total_kg_sum}` / `90` = *{round(total_kg_sum/90, 2)}*\n"
+                 f"`{total_kg_sum}` - `12%` = *{round(total_kg_sum/100*88, 2)}*")
     if total_kz_sum > 0:
-        text += f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`"
+        text += (f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`\n"
+                 f"`{total_kz_sum}` / `511` = *{round(total_kz_sum/511, 2)}*\n"
+                 f"`{total_kz_sum}` - `12%` = *{round(total_kz_sum/100*88, 2)}*")
     builder = InlineKeyboardBuilder()
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
     for i in invoices:
