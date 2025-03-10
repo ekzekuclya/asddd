@@ -351,9 +351,26 @@ async def changer_req(call: CallbackQuery):
         builder.add(
             InlineKeyboardButton(text=f"{'🟢' if i == shop_req.req else '🔴'}", callback_data=f"change_{i.id}_{shop_req.shop.id}"))
     builder.adjust(2)
-    builder.row(InlineKeyboardButton(text="Назад", callback_data=f"show_shop_{shop_req.shop.id}"))
+    builder.row(InlineKeyboardButton(text="Назад", callback_data=f"shower_shop_{shop_req.shop.id}"))
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
+
+@router.callback_query(F.data.startswith("shower_shop_"))
+async def shower_shop(call: CallbackQuery):
+    data = call.data.split("_")
+    shop = await sync_to_async(Shop.objects.get)(id=data[2])
+    shop_req = await sync_to_async(ShopReq.objects.filter)(shop=shop, active=True)
+    if shop_req:
+        shop_req = shop_req.first()
+        reqs = await sync_to_async(Req.objects.filter)(active=True)
+        builder = InlineKeyboardBuilder()
+        changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
+        for changer in changers:
+            builder.add(InlineKeyboardButton(text=f"{changer.username if changer.username else changer.first_name}",
+                                             callback_data=f"changerreq_{changer.user_id}_{shop_req.id}"))
+
+        builder.adjust(1)
+        await call.message.answer(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
 
 @router.message(Command("zp"))
 async def zp(msg: Message):
