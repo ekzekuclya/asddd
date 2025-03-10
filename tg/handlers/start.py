@@ -80,7 +80,7 @@ async def start_command(msg: Message):
             )['total']
         )()
         if total_amount > 0:
-            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req)
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=req)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(InlineKeyboardButton(text=f"{req.req_name} ({total_amount})",

@@ -400,7 +400,6 @@ async def ostatki(msg: Message):
         invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal_to_shop=False,
                                                                req__isnull=False)
         if invoices:
-            print(invoices)
             invoices = invoices.order_by('req')
             text = ""
             req_text = ""
