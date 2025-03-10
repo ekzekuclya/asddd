@@ -343,7 +343,7 @@ async def show_shop(call: CallbackQuery):
 async def changer_req(call: CallbackQuery):
     data = call.data.split("_")
     changer = await sync_to_async(TelegramUser.objects.get)(user_id=data[1])
-    shop_req = await sync_to_async(ShopReq.objects.get)(data[2])
+    shop_req = await sync_to_async(ShopReq.objects.get)(id=data[2])
     reqs = await sync_to_async(Req.objects.filter)(active=True, user=changer)
     builder = InlineKeyboardBuilder()
     for i in reqs:
