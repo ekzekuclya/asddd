@@ -123,7 +123,7 @@ async def order_to_withdrawal(call: CallbackQuery, state: FSMContext):
     if user.is_changer:
         keyboard = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Финиш")]],
                                        resize_keyboard=True)
-        await call.message.answer("TBHb3VWyKZDZkiusaVUWuqHbkDKTyWHCD6\nTRC20")
+        await call.message.answer("0xa92dddb34728a9630685c4dc3426d6787e257527\nBEP20")
         await call.message.answer("`Отправьте 2 чека!\nПервый чек курс покупки, второй чек отправки:", reply_markup=keyboard)
 
         data = call.data.split("_")
