@@ -460,6 +460,7 @@ async def zapros_vivod(call: CallbackQuery, bot: Bot):
             f"Сумма: {total_amount}\n"
             f"Реквизиты: {req.req_name}")
     await bot.send_message(chat_id=req.user.user_id, reply_markup=builder.as_markup(), text=text)
+    await call.message.answer(f"Срочное сообщение о запросе на вывод отправлено пользователю {req.user.username if req.user.username else req.user.first_name}")
 
 
 @router.message(Command("ost"))

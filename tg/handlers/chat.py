@@ -129,6 +129,7 @@ async def check(msg: Message, bot: Bot):
         builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{new_invoice.id}"))
         builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
                                          callback_data=f"repost_{msg.chat.id}_{msg.message_id}_{new_invoice.id}"))
+        builder.adjust(1)
         await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id,
                                text=f"На подтверждение {new_invoice.id}", reply_markup=builder.as_markup())
 
@@ -143,6 +144,7 @@ async def repost(call: CallbackQuery, bot: Bot):
         if changer != user:
             builder.add(InlineKeyboardButton(text=f"{changer.username if changer.username else changer.first_name}",
                                              callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{changer.user_id}"))
+    builder.adjust(1)
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 
@@ -159,6 +161,7 @@ async def sending_to_another_op(call: CallbackQuery, bot: Bot):
     builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}"))
     builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
                                      callback_data=f"repost_{from_chat_id}_{message_id}_{invoice_id}"))
+    builder.adjust(1)
     await bot.send_message(chat_id=to_user, reply_to_message_id=checking.message_id,
                            text=f"На подтверждение {invoice_id}", reply_markup=builder.as_markup())
     await call.message.answer(f"Инвойс отправлен пользователю {to_user_tg.username if to_user_tg.username else to_user_tg.first_name}")
