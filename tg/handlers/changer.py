@@ -435,6 +435,7 @@ async def changer_balance(msg: Message):
                     total_balance += total_amount
                     builder.add(InlineKeyboardButton(text=f"Запросить вывод {req.req_name}", callback_data=f"zapros_vivod_{req.id}"))
         text += f"\n{total_balance}"
+        builder.adjust(1)
         await msg.answer(text, reply_markup=builder.as_markup())
 
 
