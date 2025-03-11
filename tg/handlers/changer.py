@@ -417,11 +417,11 @@ async def changer_balance(msg: Message):
     if user.is_admin:
         changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
         text = ""
+        total_balance = 0
+        builder = InlineKeyboardBuilder()
         for changer in changers:
             text += f"👤 {changer.username if changer.username else changer.first_name}\n"
             reqs = await sync_to_async(Req.objects.filter)(user=changer, active=True)
-            total_balance = 0
-            builder = InlineKeyboardBuilder()
             for req in reqs:
                 total_amount = await sync_to_async(
                     lambda: Invoice.objects.filter(
@@ -434,7 +434,7 @@ async def changer_balance(msg: Message):
                     text += f"💳 {req.req_name} {total_amount} {'KGS' if req.kg_req else 'KZT'}\n"
                     total_balance += total_amount
                     builder.add(InlineKeyboardButton(text=f"Запросить вывод {req.req_name}", callback_data=f"zapros_vivod_{req.id}"))
-            text += f"\n{total_balance}"
+        text += f"\n{total_balance}"
         await msg.answer(text, reply_markup=builder.as_markup())
 
 
