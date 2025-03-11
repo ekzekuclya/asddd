@@ -150,16 +150,18 @@ async def repost(call: CallbackQuery, bot: Bot):
 async def sending_to_another_op(call: CallbackQuery, bot: Bot):
     data = call.data.split("_")
     to_user = data[4]
+    to_user_tg = await sync_to_async(TelegramUser.objects.get)(user_id=to_user)
     from_chat_id = data[1]
     message_id = data[2]
     invoice_id = data[3]
     checking = await bot.forward_message(chat_id=to_user, from_chat_id=from_chat_id, message_id=int(message_id))
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id.id}"))
+    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}"))
     builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
                                      callback_data=f"repost_{from_chat_id}_{message_id}_{invoice_id}"))
     await bot.send_message(chat_id=to_user, reply_to_message_id=checking.message_id,
                            text=f"На подтверждение {invoice_id}", reply_markup=builder.as_markup())
+    await call.message.answer(f"Инвойс отправлен пользователю {to_user_tg.username if to_user_tg.username else to_user_tg.first_name}")
 
 
 @router.callback_query(F.data.startswith("withdraw_balance_"))
