@@ -127,7 +127,39 @@ async def check(msg: Message, bot: Bot):
         checking = await msg.forward(chat_id=shop_req.req.user.user_id)
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{new_invoice.id}"))
-        await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id, text=f"На подтверждение {new_invoice.id}", reply_markup=builder.as_markup())
+        builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
+                                         callback_data=f"repost_{msg.chat.id}_{msg.message_id}_{new_invoice.id}"))
+        await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id,
+                               text=f"На подтверждение {new_invoice.id}", reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("repost_"))
+async def repost(call: CallbackQuery, bot: Bot):
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=call.from_user.id)
+    changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
+    data = call.data.split("_")
+    builder = InlineKeyboardBuilder()
+    for changer in changers:
+        if changer != user:
+            builder.add(InlineKeyboardButton(text=f"{changer.username if changer.username else changer.first_name}",
+                                             callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{changer.user_id}"))
+    await call.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("sending_"))
+async def sending_to_another_op(call: CallbackQuery, bot: Bot):
+    data = call.data.split("_")
+    to_user = data[4]
+    from_chat_id = data[1]
+    message_id = data[2]
+    invoice_id = data[3]
+    checking = await bot.forward_message(chat_id=to_user, from_chat_id=from_chat_id, message_id=int(message_id))
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id.id}"))
+    builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
+                                     callback_data=f"repost_{from_chat_id}_{message_id}_{invoice_id}"))
+    await bot.send_message(chat_id=to_user, reply_to_message_id=checking.message_id,
+                           text=f"На подтверждение {invoice_id}", reply_markup=builder.as_markup())
 
 
 @router.callback_query(F.data.startswith("withdraw_balance_"))
@@ -174,12 +206,12 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
         usdt_sum = total_kg_sum / 90
         text += (f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`\n\n"
                  f"`{total_kg_sum}` / `90` = *{round(usdt_sum, 2)}*\n"
-                 f"`{round(usdt_sum, 2)}` - `12%` = *{round(usdt_sum/100*88, 2)}*")
+                 f"`{round(usdt_sum, 2)}` - `12%` = *{round(usdt_sum/100*88, 2)}*\n\n")
     if total_kz_sum > 0:
         usdt_sum = total_kg_sum / 511
         text += (f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`\n\n"
                  f"`{total_kz_sum}` / `511` = *{round(usdt_sum, 2)}*\n"
-                 f"`{round(usdt_sum, 2)}` - `12%` = *{round(usdt_sum/100*88, 2)}*")
+                 f"`{round(usdt_sum, 2)}` - `15%` = *{round(usdt_sum/100*85, 2)}*")
     builder = InlineKeyboardBuilder()
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
     for i in invoices:

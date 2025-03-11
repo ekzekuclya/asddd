@@ -241,8 +241,12 @@ async def show_balance(msg: Message):
     if user.is_admin:
         shops_req = await sync_to_async(ShopReq.objects.filter)(active=True)
         builder = InlineKeyboardBuilder()
+        total_kgs = 0
+        total_kzt = 0
         for shop_req in shops_req:
             kgs, kzt = await totaler(shop_req.shop)
+            total_kgs += kgs
+            total_kzt += kzt
             if kgs > 0 or kzt > 0:
                 text += (f"🏪 `{shop_req.shop.name}` 🏪\n"
                          f"💰 *Баланс*: `{kgs}` *KGS*, `{kzt}` *T*\n")
@@ -250,6 +254,8 @@ async def show_balance(msg: Message):
                 builder.add(
                     InlineKeyboardButton(text=f"ID {shop_req.shop.id} - {shop_req.shop.name}", callback_data=f"show_shop_{shop_req.shop.id}"))
         builder.adjust(2)
+        text += (f"Общий баланс KGS: {total_kgs}\n"
+                 f"Общий баланс KZT: {total_kzt}")
         await msg.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
 
@@ -414,6 +420,8 @@ async def changer_balance(msg: Message):
         for changer in changers:
             text += f"👤 {changer.username if changer.username else changer.first_name}\n"
             reqs = await sync_to_async(Req.objects.filter)(user=changer, active=True)
+            total_balance = 0
+            builder = InlineKeyboardBuilder()
             for req in reqs:
                 total_amount = await sync_to_async(
                     lambda: Invoice.objects.filter(
@@ -424,8 +432,34 @@ async def changer_balance(msg: Message):
                 )()
                 if total_amount > 0:
                     text += f"💳 {req.req_name} {total_amount} {'KGS' if req.kg_req else 'KZT'}\n"
-            text += "\n"
-        await msg.answer(text)
+                    total_balance += total_amount
+                    builder.add(InlineKeyboardButton(text=f"Запросить вывод {req.req_name}", callback_data=f"zapros_vivod_{req.id}"))
+            text += f"\n{total_balance}"
+        await msg.answer(text, reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("zapros_vivod_"))
+async def zapros_vivod(call: CallbackQuery, bot: Bot):
+    data = call.data.split("_")
+    req = await sync_to_async(Req.objects.get)(id=data[2])
+    total_amount = await sync_to_async(
+        lambda: Invoice.objects.filter(
+            accepted=True, withdrawal=False, req=req
+        ).aggregate(
+            total=Coalesce(Sum('amount'), 0)
+        )['total']
+    )()
+    builder = InlineKeyboardBuilder()
+    if total_amount > 0:
+        invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=req)
+        withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
+        await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
+        builder.add(InlineKeyboardButton(text=f"{req.req_name} ({total_amount})",
+                                         callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
+    text = (f"‼️ СРОЧНЫЙ ЗАПРОС НА ВЫВОД!\n"
+            f"Сумма: {total_amount}\n"
+            f"Реквизиты: {req.req_name}")
+    await bot.send_message(chat_id=req.user.user_id, reply_markup=builder.as_markup(), text=text)
 
 
 @router.message(Command("ost"))
