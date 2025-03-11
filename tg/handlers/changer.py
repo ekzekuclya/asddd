@@ -433,7 +433,8 @@ async def changer_balance(msg: Message):
                 if total_amount > 0:
                     text += f"💳 {req.req_name} {total_amount} {'KGS' if req.kg_req else 'KZT'}\n"
                     total_balance += total_amount
-                    builder.add(InlineKeyboardButton(text=f"Запросить вывод {req.req_name}", callback_data=f"zapros_vivod_{req.id}"))
+                    builder.add(InlineKeyboardButton(text=f"Запрос {req.req_name}", callback_data=f"zapros_vivod_{req.id}"))
+            text += "\n"
         text += f"\n{total_balance}"
         builder.adjust(1)
         await msg.answer(text, reply_markup=builder.as_markup())
