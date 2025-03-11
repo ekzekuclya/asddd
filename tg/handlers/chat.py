@@ -142,8 +142,9 @@ async def repost(call: CallbackQuery, bot: Bot):
     builder = InlineKeyboardBuilder()
     for changer in changers:
         if changer != user:
-            builder.add(InlineKeyboardButton(text=f"{changer.username if changer.username else changer.first_name}",
+            builder.add(InlineKeyboardButton(text=f"🔂 {changer.username if changer.username else changer.first_name}",
                                              callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{changer.user_id}"))
+    builder.add(InlineKeyboardButton(text="✅ Принять самому", callback_data=f"invoice_{data[3]}"))
     builder.adjust(1)
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 

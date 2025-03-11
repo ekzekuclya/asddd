@@ -378,6 +378,7 @@ async def shower_shop(call: CallbackQuery):
         builder.adjust(1)
         await call.message.edit_text(f"SHOP ID {shop.id}-{shop.name}", reply_markup=builder.as_markup())
 
+
 @router.message(Command("zp"))
 async def zp(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
