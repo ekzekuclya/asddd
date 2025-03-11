@@ -287,7 +287,9 @@ async def obnov(call: CallbackQuery, bot: Bot):
     builder.adjust(1)
     max_message_length = 4096
     text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
-    for i in users:
-        for part in text_parts:
-            await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
-                                   parse_mode="Markdown")
+    # for i in users:
+    #     for part in text_parts:
+    #         await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
+    #                                parse_mode="Markdown")
+    await call.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+    
