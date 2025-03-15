@@ -94,8 +94,9 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
         if invoice.req and invoice.amount:
             text = f"+{invoice.amount}"
             builder = InlineKeyboardBuilder()
-            builder.add(InlineKeyboardButton(text=f"{invoice.req.req_name}"))
-            await bot.edit_message_text(text=text, chat_id=user_id, message_id=check_mes_id, reply_markup=builder.as_markup())
+            builder.add(InlineKeyboardButton(text=f"{invoice.req.req_name}", callback_data="gfdgdfh"))
+            await bot.edit_message_text(text=text, chat_id=user_id, message_id=check_mes_id,
+                                        reply_markup=builder.as_markup())
             break
         await asyncio.sleep(60)
         minutes += 1
