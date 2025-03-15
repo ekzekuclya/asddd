@@ -35,8 +35,9 @@ async def invoice_changer(call: CallbackQuery, state: FSMContext):
     reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
     builder = InlineKeyboardBuilder()
     for i in reqs:
-        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{i.id}_{data[2]}_{data[3]}"))
+        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{data[2]}_{data[3]}"))
     builder.adjust(2)
+    builder.row(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[2]}_{data[3]}_{data[1]}"))
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 
@@ -61,7 +62,7 @@ async def accept_invoice(call: CallbackQuery, state: FSMContext):
     await state.update_data(invoice_id=invoice.id)
     await state.update_data(req_id=data[2])
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data=f"backing_{data[3]}_{data[4]}_{data[1]}"))
+    builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data=f"backing_{data[2]}_{data[3]}_{data[1]}"))
     await call.message.edit_text("Введите сумму прихода:", reply_markup=builder.as_markup())
 
 
@@ -172,7 +173,7 @@ async def accept_withdrawal(call: CallbackQuery, state: FSMContext):
     withdrawal_id = data[2]
     await state.set_state(WithdrawalState.awaiting_accepting)
     await state.update_data(wid=withdrawal_id)
-    await call.message.edit_text("Введите пришедшую сумму в $")
+    await call.message.answer("Введите пришедшую сумму в $")
 
 
 @router.callback_query(F.data.startswith("dont_accept_"))
@@ -196,7 +197,6 @@ async def awaiting_accepting(msg: Message, state: FSMContext):
         all_sum = float(msg.text)
         invoices = withdrawals.invoices.all()
         total_amount = sum(invoice.amount for invoice in invoices)
-
         if total_amount > 0:
             usdt_course = total_amount / all_sum
             for invoice in invoices:

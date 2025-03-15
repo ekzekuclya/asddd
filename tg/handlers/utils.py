@@ -88,9 +88,9 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
     minutes = 0
     while True:
         invoice = await sync_to_async(Invoice.objects.get)(id=invoice_id)
-        if minutes % 10 == 0 and minutes != 0:
+        if minutes % 25 == 0 and minutes != 0:
             text = f"‼️‼️ Просрочен на {minutes} минут"
-            await bot.send_message(chat_id=user_id, text=text, reply_to_message_id=check_mes_id)
+            # await bot.send_message(chat_id=user_id, text=text, reply_to_message_id=check_mes_id)
         if invoice.req and invoice.amount:
             text = f"+{invoice.amount}"
             builder = InlineKeyboardBuilder()
