@@ -1,9 +1,13 @@
+import asyncio
+
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandObject, BaseFilter
 from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardMarkup, ChatMemberOwner, ChatMemberAdministrator, \
     CallbackQuery
 from django.db.models.functions import Coalesce
 from django.db.models import Case, When, Value, IntegerField, Sum
+from aiogram.fsm.context import FSMContext
+from .utils import inv_checker
 from ..models import TelegramUser, Shop, Invoice, Req, ShopReq, WithdrawalToShop
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from asgiref.sync import sync_to_async
@@ -126,12 +130,16 @@ async def check(msg: Message, bot: Bot):
                                                                   check_message_id=msg.message_id)
         checking = await msg.forward(chat_id=shop_req.req.user.user_id)
         builder = InlineKeyboardBuilder()
-        builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{new_invoice.id}"))
-        builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
+        builder.add(InlineKeyboardButton(text="✅ Принято",
+                                         callback_data=f"invoice_{new_invoice.id}_{msg.chat.id}_{msg.message_id}"))
+        builder.add(InlineKeyboardButton(text="❌ Нет",
                                          callback_data=f"repost_{msg.chat.id}_{msg.message_id}_{new_invoice.id}"))
         builder.adjust(1)
-        await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id,
-                               text=f"На подтверждение {new_invoice.id}", reply_markup=builder.as_markup())
+
+        check_op_msg = await bot.send_message(chat_id=shop_req.req.user.user_id, reply_to_message_id=checking.message_id,
+                               text=f"На подтверждение", reply_markup=builder.as_markup())
+        asyncio.create_task(inv_checker(new_invoice.id, bot, shop_req.req.user.user_id, check_op_msg.message_id))
+        new_invoice.save()
 
 
 @router.callback_query(F.data.startswith("repost_"))
@@ -140,12 +148,28 @@ async def repost(call: CallbackQuery, bot: Bot):
     changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
     data = call.data.split("_")
     builder = InlineKeyboardBuilder()
-    for changer in changers:
-        if changer != user:
-            builder.add(InlineKeyboardButton(text=f"🔂 {changer.username if changer.username else changer.first_name}",
-                                             callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{changer.user_id}"))
-    builder.add(InlineKeyboardButton(text="✅ Принять самому", callback_data=f"invoice_{data[3]}"))
+    if user.is_admin:
+        for changer in changers:
+            if changer != user:
+                builder.add(InlineKeyboardButton(text=f"🔂 {changer.username if changer.username else changer.first_name}",
+                                                 callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{changer.user_id}"))
+    elif user.is_changer:
+        admin = await sync_to_async(TelegramUser.objects.filter)(is_admin=True)
+        admin = admin.first()
+        builder.add(InlineKeyboardButton(text="Подтвердить",
+                                         callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{admin.user_id}"))
+        builder.add(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[1]}_{data[2]}_{data[3]}"))
+    await call.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("backing_"))
+async def backing(call: CallbackQuery, state: FSMContext):
+    data = call.data.split("_")
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{data[3]}"))
+    builder.add(InlineKeyboardButton(text="❌ Нет", callback_data=f"repost_{data[1]}_{data[2]}_{data[3]}"))
     builder.adjust(1)
+    await state.clear()
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 
@@ -160,11 +184,12 @@ async def sending_to_another_op(call: CallbackQuery, bot: Bot):
     checking = await bot.forward_message(chat_id=to_user, from_chat_id=from_chat_id, message_id=int(message_id))
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}"))
-    builder.add(InlineKeyboardButton(text="Перекинуть на другого Оператора",
+    builder.add(InlineKeyboardButton(text="❌ Нет",
                                      callback_data=f"repost_{from_chat_id}_{message_id}_{invoice_id}"))
     builder.adjust(1)
-    await bot.send_message(chat_id=to_user, reply_to_message_id=checking.message_id,
-                           text=f"На подтверждение {invoice_id}", reply_markup=builder.as_markup())
+    check_op_msg = await bot.send_message(chat_id=to_user, reply_to_message_id=checking.message_id,
+                           text=f"На подтверждение", reply_markup=builder.as_markup())
+    asyncio.create_task(inv_checker(invoice_id, bot, to_user, check_op_msg.message_id))
     await call.message.answer(f"Инвойс отправлен пользователю {to_user_tg.username if to_user_tg.username else to_user_tg.first_name}")
 
 
@@ -209,24 +234,25 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
             kz_count += 1
             total_kz_sum += i.amount
     if total_kg_sum > 0:
-        usdt_sum = total_kg_sum / 90
+        usdt_ssum = total_kg_sum / 90
         text += (f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`\n\n"
-                 f"`{total_kg_sum}` / `90` = *{round(usdt_sum, 2)}*\n"
-                 f"`{round(usdt_sum, 2)}` - `12%` = *{round(usdt_sum/100*88, 2)}*\n\n")
+                 f"`{total_kg_sum}` / `90` = *{round(usdt_ssum, 2)}*\n"
+                 f"`{round(usdt_ssum, 2)}` - `12%` = *{round(usdt_ssum / 100 * 88, 2)}*\n\n")
     if total_kz_sum > 0:
-        usdt_sum = total_kg_sum / 511
+        usdt_tsum = total_kg_sum / 515
         text += (f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`\n\n"
-                 f"`{total_kz_sum}` / `511` = *{round(usdt_sum, 2)}*\n"
-                 f"`{round(usdt_sum, 2)}` - `15%` = *{round(usdt_sum/100*85, 2)}*")
+                 f"`{total_kz_sum}` / `511` = *{round(usdt_tsum, 2)}*\n"
+                 f"`{round(usdt_tsum, 2)}` - `15%` = *{round(usdt_tsum / 100 * 85, 2)}*")
+    if total_kz_sum > 0 and total_kg_sum > 0:
+        text += (f"\n{round(usdt_ssum / 100 * 88, 2)} + {round(usdt_tsum / 100 * 85, 2)} = "
+                 f"{round(usdt_ssum / 100 * 88, 2) + round(usdt_tsum / 100 * 85, 2)}")
     builder = InlineKeyboardBuilder()
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
     for i in invoices:
         await sync_to_async(withdrawal_to_shop.invoices.add)(i)
 
-    builder.add(InlineKeyboardButton(
-        text="Вывод готов",
-        callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"
-    ))
+    builder.add(InlineKeyboardButton(text="Вывод готов",callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"))
+    builder.add(InlineKeyboardButton(text="Чек", callback_data=f"kvitto_{withdrawal_to_shop.id}"))
     builder.add(InlineKeyboardButton(text="Обновить", callback_data=f"obnov_{withdrawal_to_shop.id}"))
     max_message_length = 4096
     text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
@@ -238,6 +264,51 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
             except Exception as e:
                 print(e)
                 await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("kvitto_"))
+async def kvitto_send(call: CallbackQuery):
+    data = call.data.split("_")
+    withdraw_invs = await sync_to_async(WithdrawalToShop.objects.get)(id=data[1])
+    invoices = withdraw_invs.invoices.all()
+    invoices_shop = invoices.first()
+    text = f" 🏬 `{invoices_shop.shop.name}` 🏬 \n"
+    kg_count = 0
+    kz_count = 0
+    total_kg_sum = 0
+    total_kz_sum = 0
+    for i in invoices:
+        text += f"🔹 `({i.date.strftime('%d.%m.%Y %H:%M')})` `{i.amount}` {'*₸*' if i.req.kz_req else '*KGS*'} {'✅' if i.withdrawal else '🚫'}\n"
+        if i.req.kg_req:
+            kg_count += 1
+            total_kg_sum += i.amount
+        if i.req.kz_req:
+            kz_count += 1
+            total_kz_sum += i.amount
+    if total_kg_sum > 0:
+        usdt_ssum = total_kg_sum / 90
+        text += (f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`\n\n"
+                 f"`{total_kg_sum}` / `90` = *{round(usdt_ssum, 2)}*\n"
+                 f"`{round(usdt_ssum, 2)}` - `12%` = *{round(usdt_ssum / 100 * 88, 2)}*\n\n")
+    if total_kz_sum > 0:
+        usdt_tsum = total_kg_sum / 515
+        text += (f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`\n\n"
+                 f"`{total_kz_sum}` / `511` = *{round(usdt_tsum, 2)}*\n"
+                 f"`{round(usdt_tsum, 2)}` - `15%` = *{round(usdt_tsum / 100 * 85, 2)}*")
+    if total_kz_sum > 0 and total_kg_sum > 0:
+        text += (f"\n{round(usdt_ssum / 100 * 88, 2)} + {round(usdt_tsum / 100 * 85, 2)} = "
+                 f"{round(usdt_ssum / 100 * 88, 2) + round(usdt_tsum / 100 * 85, 2)}")
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Вывод готов", callback_data=f"withdrawal_to_shop_{withdraw_invs.id}"))
+    builder.add(InlineKeyboardButton(text="Обновить", callback_data=f"obnov_{withdraw_invs.id}"))
+    max_message_length = 4096
+    text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
+    if len(text) > 4096:
+        for part in text_parts:
+            await call.message.answer(text=part, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        return
+    await call.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+
 
 @router.callback_query(F.data.startswith("obnov_"))
 async def obnov(call: CallbackQuery, bot: Bot):
@@ -268,25 +339,26 @@ async def obnov(call: CallbackQuery, bot: Bot):
             kz_count += 1
             total_kz_sum += i.amount
     if total_kg_sum > 0:
-        usdt_sum = total_kg_sum / 90
+        usdt_ssum = total_kg_sum / 90
         text += (f"\n💷 *Общая сумма KGS*: `{total_kg_sum}` *KGS* \n          `({kg_count} инвойсов)`\n\n"
-                 f"`{total_kg_sum}` / `90` = *{round(usdt_sum, 2)}*\n"
-                 f"`{round(usdt_sum, 2)}` - `12%` = *{round(usdt_sum / 100 * 88, 2)}*\n\n")
+                 f"`{total_kg_sum}` / `90` = *{round(usdt_ssum, 2)}*\n"
+                 f"`{round(usdt_ssum, 2)}` - `12%` = *{round(usdt_ssum / 100 * 88, 2)}*\n\n")
     if total_kz_sum > 0:
-        usdt_sum = total_kg_sum / 511
+        usdt_tsum = total_kg_sum / 515
         text += (f"\n💴 *Общая сумма KZT*: `{total_kz_sum}` *₸* \n          `({kz_count} инвойсов)`\n\n"
-                 f"`{total_kz_sum}` / `511` = *{round(usdt_sum, 2)}*\n"
-                 f"`{round(usdt_sum, 2)}` - `15%` = *{round(usdt_sum / 100 * 85, 2)}*")
+                 f"`{total_kz_sum}` / `511` = *{round(usdt_tsum, 2)}*\n"
+                 f"`{round(usdt_tsum, 2)}` - `15%` = *{round(usdt_tsum / 100 * 85, 2)}*")
+    if total_kz_sum > 0 and total_kg_sum > 0:
+        text += (f"\n{round(usdt_ssum / 100 * 88, 2)} + {round(usdt_tsum / 100 * 85, 2)} = "
+                 f"{round(usdt_ssum / 100 * 88, 2) + round(usdt_tsum / 100 * 85, 2)}")
     builder = InlineKeyboardBuilder()
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.create)()
     for i in invoices:
         await sync_to_async(withdrawal_to_shop.invoices.add)(i)
 
-    builder.add(InlineKeyboardButton(
-        text="Вывод готов",
-        callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"
-    ))
+    builder.add(InlineKeyboardButton(text="Вывод готов",callback_data=f"withdrawal_to_shop_{withdrawal_to_shop.id}"))
     builder.add(InlineKeyboardButton(text="Обновить", callback_data=f"obnov_{withdrawal_to_shop.id}"))
+    builder.add(InlineKeyboardButton(text="Чек", callback_data=f"kvitto_{withdrawal_to_shop.id}"))
     builder.adjust(1)
     max_message_length = 4096
     text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]

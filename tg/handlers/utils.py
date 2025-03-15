@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import Router, Bot, F
 from aiogram.filters import Command, CommandObject, BaseFilter
 from aiogram.types import Message, InlineKeyboardButton, ReplyKeyboardMarkup, ChatMemberOwner, ChatMemberAdministrator, \
@@ -80,3 +82,20 @@ async def balancer(user):
             total_balance += referral_share
             await sync_to_async(withdrawal_m2m.invoices.add)(*invoices)
     return total_balance, withdrawal_m2m.id
+
+
+async def inv_checker(invoice_id, bot, user_id, check_mes_id):
+    minutes = 0
+    while True:
+        invoice = await sync_to_async(Invoice.objects.get)(id=invoice_id)
+        if minutes % 10 == 0 and minutes != 0:
+            text = f"‼️‼️ Просрочен на {minutes} минут"
+            await bot.send_message(chat_id=user_id, text=text, reply_to_message_id=check_mes_id)
+        if invoice.req and invoice.amount:
+            text = f"+{invoice.amount}"
+            builder = InlineKeyboardBuilder()
+            builder.add(InlineKeyboardButton(text=f"{invoice.req.req_name}"))
+            await bot.edit_message_text(text=text, chat_id=user_id, message_id=check_mes_id, reply_markup=builder.as_markup())
+            break
+        await asyncio.sleep(60)
+        minutes += 1

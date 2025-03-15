@@ -43,6 +43,7 @@ class Invoice(models.Model):
     check_message_id = models.CharField(max_length=2555, null=True, blank=True)
     req = models.ForeignKey("Req", on_delete=models.SET_NULL, null=True, blank=True)
     usdt_course = models.FloatField(null=True, blank=True)
+    status = models.CharField(max_length=255, null=True, blank=True)
 
 
 class Req(models.Model):

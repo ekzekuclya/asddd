@@ -27,14 +27,15 @@ class CheckState(StatesGroup):
 
 
 @router.callback_query(F.data.startswith("invoice"))
-async def invoice_changer(call: CallbackQuery):
+async def invoice_changer(call: CallbackQuery, state: FSMContext):
     data = call.data.split("_")
+    await state.clear()
     user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=call.from_user.id)
     invoice = await sync_to_async(Invoice.objects.get)(id=data[1])
     reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
     builder = InlineKeyboardBuilder()
     for i in reqs:
-        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{i.id}"))
+        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{i.id}_{data[2]}_{data[3]}"))
     builder.adjust(2)
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
@@ -53,12 +54,15 @@ async def my_reqs(msg: Message):
 async def accept_invoice(call: CallbackQuery, state: FSMContext):
     data = call.data.split("_")
     invoice = await sync_to_async(Invoice.objects.get)(id=data[1])
-    req = await sync_to_async(Req.objects.get)(id=data[2])
-    invoice.req = req
-    invoice.save()
+    # req = await sync_to_async(Req.objects.get)(id=data[2])
+    # invoice.req = req
+    # invoice.save()
     await state.set_state(CheckState.awaiting_amount)
     await state.update_data(invoice_id=invoice.id)
-    await call.message.answer("Введите сумму прихода:")
+    await state.update_data(req_id=data[2])
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data=f"backing_{data[3]}_{data[4]}_{data[1]}"))
+    await call.message.edit_text("Введите сумму прихода:", reply_markup=builder.as_markup())
 
 
 @router.message(CheckState.awaiting_amount)
@@ -66,7 +70,10 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     amount = int(msg.text)
     data = await state.get_data()
     invoice_id = data.get("invoice_id")
+    req_id = data.get("req_id")
     invoice = await sync_to_async(Invoice.objects.get)(id=invoice_id)
+    req = await sync_to_async(Req.objects.get)(id=req_id)
+    invoice.req = req
     invoice.amount = amount
     invoice.accepted = True
     invoice.save()
@@ -83,16 +90,18 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}", message_id=invoice.status_message_id)
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
-            accepted=True, withdrawal=False, req=invoice.req
+            accepted=True, withdrawal=False, req=invoice.req, status__isnull=True
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
     )()
+
     print("TOTAL AMOUNT", total_amount, "REQ", invoice.req.req_name)
     if invoice.req.kz_req:
         if total_amount >= 130000:
             builder = InlineKeyboardBuilder()
-            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req)
+            invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req,
+                                                                   status__isnull=True)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
@@ -102,7 +111,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         if total_amount >= 18000:
             builder = InlineKeyboardBuilder()
             invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False,
-                                                                   req=invoice.req)
+                                                                   req=invoice.req, status__isnull=True)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(
@@ -141,9 +150,15 @@ async def awaiting_withdrawal_photo(msg: Message, state: FSMContext, bot: Bot):
         wid = data.get("wid")
         total_amount = data.get("total")
         super_admin = super_admin.first()
+        withdrawal = await sync_to_async(WithdrawalToShop.objects.get)(id=wid)
         order_msg = await msg.forward(chat_id=super_admin.user_id)
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="Принять", callback_data=f"withdrawal_accept_{wid}"))
+        builder.add(InlineKeyboardButton(text="Отказ", callback_data=f"dont_accept_{wid}"))
+        invoices = withdrawal.invoices.all()
+        for i in invoices:
+            i.status = "check"
+            i.save()
         await bot.send_message(chat_id=super_admin.user_id, text=f"Проверка: {wid}\nСумма: {total_amount}",
                                reply_to_message_id=order_msg.message_id, reply_markup=builder.as_markup())
     if msg.text == "Финиш":
@@ -157,7 +172,19 @@ async def accept_withdrawal(call: CallbackQuery, state: FSMContext):
     withdrawal_id = data[2]
     await state.set_state(WithdrawalState.awaiting_accepting)
     await state.update_data(wid=withdrawal_id)
-    await call.message.answer("Введите пришедшую сумму в $")
+    await call.message.edit_text("Введите пришедшую сумму в $")
+
+
+@router.callback_query(F.data.startswith("dont_accept_"))
+async def do_not_accepting(call: CallbackQuery):
+    data = call.data.split("_")
+    wid = data[2]
+    withdraw = await sync_to_async(WithdrawalToShop.objects.get)(id=wid)
+    invoices = withdraw.invoices.all()
+    for i in invoices:
+        i.status = None
+        i.save()
+    await call.answer("Сброшено")
 
 
 @router.message(WithdrawalState.awaiting_accepting)
