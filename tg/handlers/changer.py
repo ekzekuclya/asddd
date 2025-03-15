@@ -35,7 +35,7 @@ async def invoice_changer(call: CallbackQuery, state: FSMContext):
     reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
     builder = InlineKeyboardBuilder()
     for i in reqs:
-        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{data[2]}_{data[3]}"))
+        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{data[2]}_{data[3]}_{i.id}"))
     builder.adjust(2)
     builder.row(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[2]}_{data[3]}_{data[1]}"))
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
@@ -60,7 +60,7 @@ async def accept_invoice(call: CallbackQuery, state: FSMContext):
     # invoice.save()
     await state.set_state(CheckState.awaiting_amount)
     await state.update_data(invoice_id=invoice.id)
-    await state.update_data(req_id=data[2])
+    await state.update_data(req_id=data[4])
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="❌ Отмена", callback_data=f"backing_{data[2]}_{data[3]}_{data[1]}"))
     await call.message.edit_text("Введите сумму прихода:", reply_markup=builder.as_markup())
