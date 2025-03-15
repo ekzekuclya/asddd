@@ -187,7 +187,7 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
     )()
     users = await sync_to_async(TelegramUser.objects.filter)(is_super_admin=True)
     await call.message.answer(f"Запрошен вывод {total_amount_kzt}₸ {total_amount_kgs}KGS")
-    text = f"➖➖➖ 🏬 {shop.name} 🏬 ➖➖➖\n"
+    text = f" 🏬 `{shop.name}` 🏬 \n"
     invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, shop=shop, withdrawal_to_shop=False)
     invoices = invoices.order_by('req')
     req_text = ""
@@ -232,9 +232,12 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
     text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
     for i in users:
         for part in text_parts:
-            await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
-                                   parse_mode="Markdown")
-
+            try:
+                await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
+                                       parse_mode="Markdown")
+            except Exception as e:
+                print(e)
+                await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("obnov_"))
 async def obnov(call: CallbackQuery, bot: Bot):
@@ -287,9 +290,9 @@ async def obnov(call: CallbackQuery, bot: Bot):
     builder.adjust(1)
     max_message_length = 4096
     text_parts = [text[i:i + max_message_length] for i in range(0, len(text), max_message_length)]
-    # for i in users:
-    #     for part in text_parts:
-    #         await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
-    #                                parse_mode="Markdown")
+    if len(text) > 4096:
+        for i in users:
+            for part in text_parts:
+                await bot.send_message(chat_id=i.user_id, text=part, reply_markup=builder.as_markup(),
+                                       parse_mode="Markdown")
     await call.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
-    

@@ -386,12 +386,14 @@ async def zp(msg: Message):
         changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
         text = "BALANCES\n\n"
         callback_text = "zp"
+        total = 0
         for user in changers:
             balance, wid = await balancer(user)
             text += f"{user.username if user.username else user.first_name} - ${balance}\n"
             callback_text += f"_{wid}"
+            total += balance
+        text += f"\nTOTAL: {round(total, 2)}$"
         builder = InlineKeyboardBuilder()
-
         builder.add(InlineKeyboardButton(text="Зп выдан", callback_data=callback_text))
         await msg.answer(text, reply_markup=builder.as_markup())
 
@@ -418,7 +420,8 @@ async def changer_balance(msg: Message):
     if user.is_admin:
         changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
         text = ""
-        total_balance = 0
+        total_balance_kgs = 0
+        total_balance_kzt = 0
         builder = InlineKeyboardBuilder()
         for changer in changers:
             text += f"👤 {changer.username if changer.username else changer.first_name}\n"
@@ -433,10 +436,17 @@ async def changer_balance(msg: Message):
                 )()
                 if total_amount > 0:
                     text += f"💳 {req.req_name} {total_amount} {'KGS' if req.kg_req else 'KZT'}\n"
-                    total_balance += total_amount
+                    if req.kg_req:
+                        total_balance_kgs += total_amount
+                    if req.kz_req:
+                        total_balance_kzt += total_amount
                     builder.add(InlineKeyboardButton(text=f"Запрос {req.req_name}", callback_data=f"zapros_vivod_{req.id}"))
             text += "\n"
-        text += f"\n{total_balance}"
+        total_balance_usdt_kgs = total_balance_kgs / 90
+        total_balance_usdt_kzt = total_balance_kzt / 511
+        text += f"\n{total_balance_kgs} KGS - {total_balance_usdt_kgs}$\n"
+        text += f"{total_balance_kzt} KZT - {total_balance_usdt_kzt}"
+
         builder.adjust(1)
         await msg.answer(text, reply_markup=builder.as_markup())
 
