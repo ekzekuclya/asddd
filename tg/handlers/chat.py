@@ -166,7 +166,7 @@ async def repost(call: CallbackQuery, bot: Bot):
 async def backing(call: CallbackQuery, state: FSMContext):
     data = call.data.split("_")
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{data[3]}"))
+    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{data[3]}_{data[1]}_{data[2]}"))
     builder.add(InlineKeyboardButton(text="❌ Нет", callback_data=f"repost_{data[1]}_{data[2]}_{data[3]}"))
     builder.adjust(1)
     await state.clear()
