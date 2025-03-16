@@ -183,7 +183,14 @@ async def sending_to_another_op(call: CallbackQuery, bot: Bot):
     from_chat_id = data[1]
     message_id = data[2]
     invoice_id = data[3]
-    checking = await bot.forward_message(chat_id=to_user, from_chat_id=from_chat_id, message_id=int(message_id))
+    try:
+        checking = await bot.forward_message(chat_id=to_user, from_chat_id=from_chat_id, message_id=int(message_id))
+    except Exception as e:
+        invoice = await sync_to_async(Invoice.objects.get)(id=invoice_id)
+        invoice.status = "deleted"
+        invoice.save()
+        print(e)
+        return 
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}_{from_chat_id}_{message_id}"))
     builder.add(InlineKeyboardButton(text="❌ Нет",
