@@ -185,7 +185,7 @@ async def sending_to_another_op(call: CallbackQuery, bot: Bot):
     invoice_id = data[3]
     checking = await bot.forward_message(chat_id=to_user, from_chat_id=from_chat_id, message_id=int(message_id))
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}"))
+    builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}_{from_chat_id}_{message_id}"))
     builder.add(InlineKeyboardButton(text="❌ Нет",
                                      callback_data=f"repost_{from_chat_id}_{message_id}_{invoice_id}"))
     builder.adjust(1)
