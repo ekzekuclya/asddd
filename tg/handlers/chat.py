@@ -153,12 +153,14 @@ async def repost(call: CallbackQuery, bot: Bot):
             if changer != user:
                 builder.add(InlineKeyboardButton(text=f"🔂 {changer.username if changer.username else changer.first_name}",
                                                  callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{changer.user_id}"))
+
     elif user.is_changer:
         admin = await sync_to_async(TelegramUser.objects.filter)(is_admin=True)
         admin = admin.first()
         builder.add(InlineKeyboardButton(text="Подтвердить",
                                          callback_data=f"sending_{data[1]}_{data[2]}_{data[3]}_{admin.user_id}"))
-        builder.add(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[1]}_{data[2]}_{data[3]}"))
+    builder.row(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[1]}_{data[2]}_{data[3]}"))
+    builder.adjust(1)
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 

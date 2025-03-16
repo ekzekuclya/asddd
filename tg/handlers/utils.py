@@ -94,7 +94,10 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
         if invoice.req and invoice.amount:
             text = f"+{invoice.amount}"
             builder = InlineKeyboardBuilder()
-            builder.add(InlineKeyboardButton(text=f"{invoice.req.req_name}", callback_data="gfdgdfh"))
+            if invoice.req.user.user_id == user_id:
+                builder.add(InlineKeyboardButton(text=f"{invoice.req.req_name}", callback_data="gfdgdfh"))
+            else:
+                builder.add(InlineKeyboardButton(text="✅", callback_data="gdfhdgdsf"))
             await bot.edit_message_text(text=text, chat_id=user_id, message_id=check_mes_id,
                                         reply_markup=builder.as_markup())
             break
