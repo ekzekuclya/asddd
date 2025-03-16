@@ -431,14 +431,14 @@ async def shower_shop(call: CallbackQuery):
 @router.message(Command("zp"))
 async def zp(msg: Message):
     user = await sync_to_async(TelegramUser.objects.get)(user_id=msg.from_user.id)
-    if user.is_super_admin:
+    if user.is_admin:
         changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
         text = "BALANCES\n\n"
         callback_text = "zp"
         total = 0
         for user in changers:
             balance, wid = await balancer(user)
-            text += f"{user.username if user.username else user.first_name} - ${balance}\n"
+            text += f"{user.username if user.username else user.first_name} - ${round(balance, 2)}\n"
             callback_text += f"_{wid}"
             total += balance
         text += f"\nTOTAL: {round(total, 2)}$"
@@ -523,7 +523,6 @@ async def zapros_vivod(call: CallbackQuery, bot: Bot):
             f"Реквизиты: {req.req_name}")
     await bot.send_message(chat_id=req.user.user_id, reply_markup=builder.as_markup(), text=text)
     await call.message.answer(f"Срочное сообщение о запросе на вывод отправлено пользователю {req.user.username if req.user.username else req.user.first_name}")
-
 
 @router.message(Command("ost"))
 async def ostatki(msg: Message):

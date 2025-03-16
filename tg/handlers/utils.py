@@ -86,6 +86,10 @@ async def balancer(user):
 
 async def inv_checker(invoice_id, bot, user_id, check_mes_id):
     minutes = 0
+    try:
+        await bot.pin_chat_message(chat_id=user_id, message_id=check_mes_id)
+    except Exception as e:
+        print(e)
     while True:
         invoice = await sync_to_async(Invoice.objects.get)(id=invoice_id)
         if minutes % 20 == 0 and minutes != 0:
@@ -100,6 +104,10 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
                 builder.add(InlineKeyboardButton(text="✅", callback_data="gdfhdgdsf"))
             await bot.edit_message_text(text=text, chat_id=user_id, message_id=check_mes_id,
                                         reply_markup=builder.as_markup())
+            try:
+                await bot.unpin_chat_message(chat_id=user_id, message_id=check_mes_id)
+            except Exception as e:
+                print(e)
             break
         await asyncio.sleep(60)
         minutes += 1
