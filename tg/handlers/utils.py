@@ -94,6 +94,10 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
         invoice = await sync_to_async(Invoice.objects.get)(id=invoice_id)
         if invoice.status == "deleted":
             await bot.edit_message_text(text="Удален", chat_id=user_id, message_id=check_mes_id)
+            try:
+                await bot.unpin_chat_message(chat_id=user_id, message_id=check_mes_id)
+            except Exception as e:
+                print(e)
             break
         if minutes % 20 == 0 and minutes != 0:
             text = f"‼️‼️ Просрочен на {minutes} минут"
