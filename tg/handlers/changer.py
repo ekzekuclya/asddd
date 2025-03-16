@@ -56,11 +56,17 @@ async def another_reqs(call: CallbackQuery):
     shop_req = shop_req.first()
 
     for i in reqs:
-        if i == shop_req.req:
-            builder.add(InlineKeyboardButton(text=f"{i.req_name}",
-                                             callback_data=f"accept_{invoice.id}_{data[3]}_{data[4]}_{i.id}"))
+        builder.add(InlineKeyboardButton(text=f"{i.req_name}",
+                                         callback_data=f"accept_{invoice.id}_{data[3]}_{data[4]}_{i.id}"))
+    if user.is_admin:
+        builder.row(InlineKeyboardButton(text="Удалить инвойс", callback_data=f"delete_invoice_{invoice.id}_{data[3]}_{data[4]}"))
     builder.row(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[2]}_{data[3]}_{invoice.id}"))
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("delete.invoice_"))
+async def delete_invoice(call: CallbackQuery):
+
 
 
 @router.message(Command("reqs"))
