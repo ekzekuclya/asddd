@@ -34,10 +34,32 @@ async def invoice_changer(call: CallbackQuery, state: FSMContext):
     invoice = await sync_to_async(Invoice.objects.get)(id=data[1])
     reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
     builder = InlineKeyboardBuilder()
+    shop_req = await sync_to_async(ShopReq.objects.filter)(shop=invoice.shop, active=True)
+    shop_req = shop_req.first()
     for i in reqs:
-        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{data[2]}_{data[3]}_{i.id}"))
+        if i == shop_req.req:
+            builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"accept_{invoice.id}_{data[2]}_{data[3]}_{i.id}"))
     builder.adjust(2)
+    builder.row(InlineKeyboardButton(text="Другие", callback_data=f"another_reqs_{invoice.id}_{data[2]}_{data[3]}"))
     builder.row(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[2]}_{data[3]}_{data[1]}"))
+    await call.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("another_reqs"))
+async def another_reqs(call: CallbackQuery):
+    data = call.data.split("_")
+    user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=call.from_user.id)
+    invoice = await sync_to_async(Invoice.objects.get)(id=data[1])
+    reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
+    builder = InlineKeyboardBuilder()
+    shop_req = await sync_to_async(ShopReq.objects.filter)(shop=invoice.shop, active=True)
+    shop_req = shop_req.first()
+
+    for i in reqs:
+        if i == shop_req.req:
+            builder.add(InlineKeyboardButton(text=f"{i.req_name}",
+                                             callback_data=f"accept_{invoice.id}_{data[3]}_{data[4]}_{i.id}"))
+    builder.row(InlineKeyboardButton(text="Назад", callback_data=f"backing_{data[2]}_{data[3]}_{invoice.id}"))
     await call.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 
