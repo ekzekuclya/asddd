@@ -49,7 +49,7 @@ async def invoice_changer(call: CallbackQuery, state: FSMContext):
 async def another_reqs(call: CallbackQuery):
     data = call.data.split("_")
     user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=call.from_user.id)
-    invoice = await sync_to_async(Invoice.objects.get)(id=data[1])
+    invoice = await sync_to_async(Invoice.objects.get)(id=data[2])
     reqs = await sync_to_async(Req.objects.filter)(user=user, active=True)
     builder = InlineKeyboardBuilder()
     shop_req = await sync_to_async(ShopReq.objects.filter)(shop=invoice.shop, active=True)
