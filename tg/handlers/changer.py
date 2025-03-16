@@ -277,7 +277,6 @@ async def handle_withdrawal_to_shop(callback_query: CallbackQuery):
     withdrawal_to_shop = await sync_to_async(WithdrawalToShop.objects.get)(id=with_id)
     invoices = withdrawal_to_shop.invoices.all()
     for i in invoices:
-        i.withdrawal = True
         i.withdrawal_to_shop = True
         i.save()
     await callback_query.answer("Вывод успешно завершен.")
@@ -523,6 +522,7 @@ async def zapros_vivod(call: CallbackQuery, bot: Bot):
             f"Реквизиты: {req.req_name}")
     await bot.send_message(chat_id=req.user.user_id, reply_markup=builder.as_markup(), text=text)
     await call.message.answer(f"Срочное сообщение о запросе на вывод отправлено пользователю {req.user.username if req.user.username else req.user.first_name}")
+
 
 @router.message(Command("ost"))
 async def ostatki(msg: Message):
