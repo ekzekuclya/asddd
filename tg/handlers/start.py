@@ -76,7 +76,7 @@ async def start_command(msg: Message):
         for req in reqs:
             total_amount = await sync_to_async(
                 lambda: Invoice.objects.filter(
-                    accepted=True, withdrawal=False, req=req, status__isnull=True
+                    accepted=True, withdrawal=False, req=req
                 ).aggregate(
                     total=Coalesce(Sum('amount'), 0)
                 )['total']

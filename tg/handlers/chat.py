@@ -190,7 +190,7 @@ async def sending_to_another_op(call: CallbackQuery, bot: Bot):
         invoice.status = "deleted"
         invoice.save()
         print(e)
-        return 
+        return
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="✅ Принято", callback_data=f"invoice_{invoice_id}_{from_chat_id}_{message_id}"))
     builder.add(InlineKeyboardButton(text="❌ Нет",
