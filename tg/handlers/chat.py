@@ -25,6 +25,9 @@ class IsShopChatID(BaseFilter):
             return False
 
 
+
+
+
 class IsShopCheck(BaseFilter):
     async def __call__(self, message: Message) -> bool:
         user_chat_id = str(message.chat.id)
@@ -220,7 +223,9 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
         )['total']
     )()
     users = await sync_to_async(TelegramUser.objects.filter)(is_super_admin=True)
-    await call.message.answer(f"Запрошен вывод {total_amount_kzt}₸ {total_amount_kgs}KGS")
+    await call.message.answer(f"Запрошен вывод {total_amount_kzt}₸ {total_amount_kgs}KGS\n"
+                              f"Вывод соваершается в течении 12ч после запроса! ")
+                             
     text = f" 🏬 `{shop.name}` 🏬 \n"
     invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, shop=shop, withdrawal_to_shop=False)
     invoices = invoices.order_by('req')

@@ -216,9 +216,7 @@ async def do_not_accepting(call: CallbackQuery):
     wid = data[2]
     withdraw = await sync_to_async(WithdrawalToShop.objects.get)(id=wid)
     invoices = withdraw.invoices.all()
-    for i in invoices:
-        i.status = None
-        i.save()
+
     await call.answer("Сброшено")
 
 
@@ -452,6 +450,7 @@ async def zp(msg: Message):
             text += f"{user.username if user.username else user.first_name} - ${round(balance, 2)}\n"
             callback_text += f"_{wid}"
             total += balance
+
         text += f"\nTOTAL: {round(total, 2)}$"
         builder = InlineKeyboardBuilder()
         builder.add(InlineKeyboardButton(text="Зп выдан", callback_data=callback_text))
