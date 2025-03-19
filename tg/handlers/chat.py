@@ -224,8 +224,8 @@ async def withdraw_balance(call: CallbackQuery, bot: Bot):
     )()
     users = await sync_to_async(TelegramUser.objects.filter)(is_super_admin=True)
     await call.message.answer(f"Запрошен вывод {total_amount_kzt}₸ {total_amount_kgs}KGS\n"
-                              f"Вывод соваершается в течении 12ч после запроса! ")
-                             
+                              f"Вывод соваершается в течении 12ч после запроса, мы работаем над автоматизацией выводов. ")
+
     text = f" 🏬 `{shop.name}` 🏬 \n"
     invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, shop=shop, withdrawal_to_shop=False)
     invoices = invoices.order_by('req')
