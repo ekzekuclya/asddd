@@ -232,9 +232,13 @@ async def awaiting_accepting(msg: Message, state: FSMContext):
         if total_amount > 0:
             usdt_course = total_amount / all_sum
             for invoice in invoices:
-                invoice.usdt_course = usdt_course
-                invoice.withdrawal = True
-                invoice.save()
+                if not invoice.usdt_course:
+                    invoice.usdt_course = usdt_course
+                    invoice.withdrawal = True
+                    invoice.save()
+                if invoice.usdt_course:
+                    await msg.answer(f"Инвойс уже имеет курс, {invoice.id} {invoice.amount} {invoice.usdt_course} {invoice.req}")
+                    await asyncio.sleep(1)
         await state.clear()
         await msg.answer("Принято!")
     except Exception as e:

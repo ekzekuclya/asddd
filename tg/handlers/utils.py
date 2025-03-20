@@ -116,5 +116,17 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
             except Exception as e:
                 print(e)
             break
+        if invoice.amount == 0:
+            text = f"+{invoice.amount}"
+            builder = InlineKeyboardBuilder()
+
+            builder.add(InlineKeyboardButton(text="✅", callback_data="gdfhdgdsf"))
+            await bot.edit_message_text(text=text, chat_id=user_id, message_id=check_mes_id,
+                                        reply_markup=builder.as_markup())
+            try:
+                await bot.unpin_chat_message(chat_id=user_id, message_id=check_mes_id)
+            except Exception as e:
+                print(e)
+            break
         await asyncio.sleep(60)
         minutes += 1
