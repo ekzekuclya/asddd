@@ -146,7 +146,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         if total_amount >= 18000:
             builder = InlineKeyboardBuilder()
             invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False,
-                                                                   req=invoice.req, status__isnull=True)
+                                                                   req=invoice.req, usdt_course__isnull=True)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(
@@ -492,7 +492,7 @@ async def changer_balance(msg: Message):
             for req in reqs:
                 total_amount = await sync_to_async(
                     lambda: Invoice.objects.filter(
-                        accepted=True, withdrawal=False, req=req
+                        accepted=True, withdrawal=False, req=req, usdt_course__isnull=True
                     ).aggregate(
                         total=Coalesce(Sum('amount'), 0)
                     )['total']
