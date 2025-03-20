@@ -125,7 +125,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}", message_id=invoice.status_message_id)
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
-            accepted=True, withdrawal=False, req=invoice.req, status__isnull=True
+            accepted=True, withdrawal=False, req=invoice.req, usdt_course__isnull=True
         ).aggregate(
             total=Coalesce(Sum('amount'), 0)
         )['total']
