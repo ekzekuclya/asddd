@@ -113,16 +113,21 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
     invoice.accepted = True
     invoice.save()
     reaction = ReactionTypeEmoji(emoji="👍")
-    if amount > 0:
-        await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
-                                       message_id=invoice.check_message_id)
-    if amount == 0:
-        reaction = ReactionTypeEmoji(emoji="👎")
-        await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
-                                       message_id=invoice.check_message_id)
-    await bot.set_message_reaction(chat_id=msg.chat.id, reaction=[reaction],
-                                   message_id=msg.message_id)
-    await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}", message_id=invoice.status_message_id)
+    try:
+        await bot.edit_message_text(chat_id=invoice.shop.chat_id, text=f"+{amount}",
+                                    message_id=invoice.status_message_id)
+        if amount > 0:
+            await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
+                                           message_id=invoice.check_message_id)
+        if amount == 0:
+            reaction = ReactionTypeEmoji(emoji="👎")
+            await bot.set_message_reaction(chat_id=invoice.shop.chat_id, reaction=[reaction],
+                                           message_id=invoice.check_message_id)
+        await bot.set_message_reaction(chat_id=msg.chat.id, reaction=[reaction],
+                                       message_id=msg.message_id)
+
+    except Exception as e:
+        print(e)
     total_amount = await sync_to_async(
         lambda: Invoice.objects.filter(
             accepted=True, withdrawal=False, req=invoice.req, usdt_course__isnull=True
@@ -136,7 +141,7 @@ async def accept_amount(msg: Message, state: FSMContext, bot: Bot):
         if total_amount >= 130000:
             builder = InlineKeyboardBuilder()
             invoices = await sync_to_async(Invoice.objects.filter)(accepted=True, withdrawal=False, req=invoice.req,
-                                                                   status__isnull=True)
+                                                                   usdt_course__isnull=True)
             withdrawal_to_main = await sync_to_async(WithdrawalToShop.objects.create)()
             await sync_to_async(withdrawal_to_main.invoices.add)(*invoices)
             builder.add(InlineKeyboardButton(text="Вывести", callback_data=f"order_to_withdrawal_{withdrawal_to_main.id}_{total_amount}"))
@@ -236,7 +241,7 @@ async def awaiting_accepting(msg: Message, state: FSMContext):
                     invoice.usdt_course = usdt_course
                     invoice.withdrawal = True
                     invoice.save()
-                if invoice.usdt_course:
+                elif invoice.usdt_course:
                     await msg.answer(f"Инвойс уже имеет курс, {invoice.id} {invoice.amount} {invoice.usdt_course} {invoice.req}")
                     await asyncio.sleep(1)
         await state.clear()

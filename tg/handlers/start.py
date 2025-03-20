@@ -91,4 +91,10 @@ async def start_command(msg: Message):
         await msg.answer(text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
 
+from tg.models import Invoice
+
+for i in Invoice.objects.filter(usdt_course__isnull=True, accepted=True):
+    print(i.id, i.date, i.amount, i.req)
+
+
 
