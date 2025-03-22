@@ -78,11 +78,38 @@ async def delete_invoice(call: CallbackQuery):
 @router.message(Command("reqs"))
 async def my_reqs(msg: Message):
     user, created = await sync_to_async(TelegramUser.objects.get_or_create)(user_id=msg.from_user.id)
-    if user.is_changer:
-        reqs = await sync_to_async(Req.objects.filter)(user=user)
+    if user.is_admin:
+        changers = await sync_to_async(TelegramUser.objects.filter)(is_changer=True)
+
         builder = InlineKeyboardBuilder()
-        for req in reqs:
-            builder.add(InlineKeyboardButton(text=f"{req.req_name}", callback_data=f"user_show_req_{req.id}"))
+        for i in changers:
+            builder.add(InlineKeyboardButton(text=f"{i.username if i.username else i.first_name}", callback_data=f"user_show_req_{i.user_id}"))
+
+        await msg.answer("OP's", reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data.startswith("user_show_req_"))
+async def user_show_req(call: CallbackQuery):
+    data = call.data.split("_")
+    changer = await sync_to_async(TelegramUser.objects.get)(user_id=data[3])
+    reqs = await sync_to_async(Req.objects.filter)(active=True, user=changer)
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="➕ Доабвить реквизит", callback_data=f"add_to_changer_req_{changer.user_id}"))
+    for i in reqs:
+        builder.add(InlineKeyboardButton(text=f"{i.req_name}", callback_data=f"req_stats_{i.id}"))
+    builder.adjust(2)
+    await call.message.edit_reply_markup(reply_markup=builder.as_markup())
+
+
+class AddReqState(StatesGroup):
+    awaiting_req_name = State()
+    awaiting_main = State()
+    awaiting_req = State()
+
+
+@router.callback_query(F.data.startswith("add_to_changer_req_"))
+async def add_to_changer_req(call: CallbackQuery):
+    ...
 
 
 @router.callback_query(F.data.startswith("accept"))

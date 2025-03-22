@@ -99,9 +99,9 @@ async def inv_checker(invoice_id, bot, user_id, check_mes_id):
             except Exception as e:
                 print(e)
             break
-        if minutes % 20 == 0 and minutes != 0:
-            text = f"‼️‼️ Просрочен на {minutes} минут"
-            await bot.send_message(chat_id=user_id, text=text, reply_to_message_id=check_mes_id)
+        # if minutes % 20 == 0 and minutes != 0:
+        #     text = f"‼️‼️ Просрочен на {minutes} минут"
+        #     await bot.send_message(chat_id=user_id, text=text, reply_to_message_id=check_mes_id)
         if invoice.req and invoice.amount:
             text = f"+{invoice.amount}"
             builder = InlineKeyboardBuilder()
