@@ -269,6 +269,9 @@ async def awaiting_accepting(msg: Message, state: FSMContext):
                     invoice.withdrawal = True
                     invoice.save()
                 elif invoice.usdt_course:
+                    invoice.usdt_course = usdt_course
+                    invoice.withdrawal = True
+                    invoice.save()
                     await msg.answer(f"Инвойс уже имеет курс, {invoice.id} {invoice.amount} {invoice.usdt_course} {invoice.req}")
                     await asyncio.sleep(1)
         await state.clear()
@@ -610,8 +613,6 @@ async def ostatki(msg: Message):
                 await msg.answer(part, parse_mode="Markdown")
         else:
             print("NO INVOICES")
-
-
 
 
 
