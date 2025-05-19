@@ -84,7 +84,7 @@ async def my_reqs(msg: Message):
         builder = InlineKeyboardBuilder()
         for i in changers:
             builder.add(InlineKeyboardButton(text=f"{i.username if i.username else i.first_name}", callback_data=f"user_show_req_{i.user_id}"))
-
+        builder.adjust(1)
         await msg.answer("OP's", reply_markup=builder.as_markup())
 
 
@@ -108,9 +108,26 @@ class AddReqState(StatesGroup):
 
 
 @router.callback_query(F.data.startswith("add_to_changer_req_"))
-async def add_to_changer_req(call: CallbackQuery):
-    ...
+async def add_to_changer_req(call: CallbackQuery, state: FSMContext):
+    await state.set_state(AddReqState.awaiting_req_name)
+    data = call.data.split("_")
+    await state.update_data(user_id=data[4])
+    await call.message.answer("Введите имя")
 
+@router.message(AddReqState.awaiting_req_name)
+async def awaiting_changer_req_name(msg: Message, state: FSMContext):
+    await state.update_data(name=msg.text)
+    await state.set_state(AddReqState.awaiting_req)
+    await msg.answer("Введите цифры карты")
+
+@router.message(AddReqState.awaiting_req)
+async def awaiting_changer_req_cart(msg: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data.get("user_id")
+    name = data.get("name")
+    user = await sync_to_async(TelegramUser.objects.get)(user_id=int(user_id))
+    new_req = await sync_to_async(Req.objects.create)(user=user, active=True, kg_req=True, req=msg.text, bank="created_by_admin", req_name=name)
+    await msg.answer(f"{new_req.cart} {new_req.req_name}  СОЗДАН")
 
 @router.callback_query(F.data.startswith("accept"))
 async def accept_invoice(call: CallbackQuery, state: FSMContext):
