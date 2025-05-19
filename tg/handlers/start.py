@@ -90,22 +90,4 @@ async def start_command(msg: Message):
         builder.adjust(2)
         await msg.answer(text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
-from tg.models import Invoice, Shop, TGUser, ReqUsage, WithdrawalMode
-wid = WithdrawalMode.objects.get(id=144)
-invs = wid.invoices.all()
-a = 0
-for inv in invs:
-    print("KZT", inv.amount_in_kzt)
-    print("FIAT", inv.amount_in_fiat)
-    print("SHOP", inv.shop.name)
-    print("CART", inv.req.cart)
-    print(inv.id, "USD", inv.amount_in_usdt)
-    inv.sent_bank = True
-    inv.save()
-    print(inv.sent_bank)
-    print("-----------------")
-
-
-for inv in invs:
-    print(inv.sent_shop)
 
