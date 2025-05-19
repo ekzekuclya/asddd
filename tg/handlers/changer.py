@@ -127,7 +127,7 @@ async def awaiting_changer_req_cart(msg: Message, state: FSMContext):
     name = data.get("name")
     user = await sync_to_async(TelegramUser.objects.get)(user_id=int(user_id))
     new_req = await sync_to_async(Req.objects.create)(user=user, active=True, kg_req=True, req=msg.text, bank="created_by_admin", req_name=name)
-    await msg.answer(f"{new_req.cart} {new_req.req_name}  СОЗДАН")
+    await msg.answer(f"{new_req.req} {new_req.req_name}  СОЗДАН")
 
 @router.callback_query(F.data.startswith("accept"))
 async def accept_invoice(call: CallbackQuery, state: FSMContext):
